@@ -1,0 +1,560 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Heroku Necessities &#8212; Generate CSV Files in the Background With Delayed_job and Store Them on S3 With Paperclip - Kevin Trowbridge</title>
+  <meta name="author" content="Kevin Trowbridge">
+
+  
+  <meta name="description" content="I&rsquo;m trying to get back into technical blogging as I encounter interesting situations on a daily basis &hellip; and I get so
+much information &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://www.kevinmtrowbridge.com/2012-05-30-heroku-necessities-generate-CSV-files-in-the-background">
+  <link href="/favicon.ico" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Kevin Trowbridge" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-7781322-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body    class="collapse-sidebar sidebar-footer" >
+  <header role="banner"><hgroup>
+  <img src="/images/t-for-trowbridge.png" style="float: left;">
+  <h1><a href="/">Kevin Trowbridge</a></h1>
+  
+    <h2>Software Developer. Husband. I ❤ Webpages.</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:www.kevinmtrowbridge.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/about.html">About</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Heroku Necessities &#8212; Generate CSV Files in the Background With Delayed_job and Store Them on S3 With Paperclip</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2012-05-30T00:00:00-07:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I&rsquo;m trying to get back into technical blogging as I encounter interesting situations on a daily basis &hellip; and I get so
+much information from others doing the same thing.</p>
+
+<p>In this case I&rsquo;m moving a fairly large blog from a custom deployment platform on EngineYard, to Heroku.  Heroku enforces
+a 30-second request timeout&mdash;so the webserver can&rsquo;t be used for heavy, long-running tasks like generating a large CSV
+file.</p>
+
+<p>The solution is to move the generation of the CSV file into a background task, and store the generated CSV file on
+Amazon S3.  Since in my case the data that I am compiling into the CSV file is private, I also show how to configure
+Paperclip to make the generated CSV file only downloadable to authenticated users.</p>
+
+<p>Here&rsquo;s a brief (30 second) video showing the UI you can build by following these steps:</p>
+
+<iframe src="//player.vimeo.com/video/43075821" width="500" height="194" style="max-width: 100%" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+
+
+<p></p>
+
+<p>
+  <a href="http://vimeo.com/43075821">Heroku Necessities: generate CSV files in the background with “delayed_job” and store them on S3 with “paperclip” …</a> 
+  from 
+  <a href="http://vimeo.com/user2012540">Kevin Trowbridge</a> on <a href="https://vimeo.com">Vimeo</a>.
+</p>
+
+
+<h2>The Model: ExportedDataCsv.rb</h2>
+
+<p>In my case I have a few large sets of data that are stored in the database, that need to be exportable from the system
+for reporting and administrative tasks.  Think &hellip; the &lsquo;Users&rsquo; table (full list of users with email addresses, names,
+and so on) &hellip; or the &lsquo;Stories&rsquo; table (for a blog, all of the &lsquo;stories&rsquo; that have ever been written for the site).  So
+this is stateful.  We&rsquo;re going to turn the Users table into a CSV file and save it on Amazon S3.  We&rsquo;ll be storing
+specific information about the file:</p>
+
+<ul>
+<li>What&rsquo;s its exact name?</li>
+<li>When was it generated?</li>
+<li>Is it actively generating right now, or is it available for download?</li>
+</ul>
+
+
+<p>We&rsquo;re using Paperclip to handle the mechanics of saving the file to S3, but we&rsquo;ll need to setup a model in order to
+configure paperclip, as well as to store that stateful information.</p>
+
+<figure class='code'><figcaption><span>app/models/exported_data_csv.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">ExportedDataCsv</span> <span class="o">&lt;</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Base</span>
+</span><span class='line'>  <span class="n">has_attached_file</span> <span class="ss">:csv_file</span><span class="p">,</span> <span class="p">{</span><span class="ss">:s3_protocol</span> <span class="o">=&gt;</span> <span class="s1">&#39;https&#39;</span><span class="p">,</span> <span class="ss">:s3_permissions</span> <span class="o">=&gt;</span> <span class="s2">&quot;authenticated_read&quot;</span><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">acts_as_singleton</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">generating?</span>
+</span><span class='line'>    <span class="n">job_id</span><span class="o">.</span><span class="n">present?</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">csv_file_exists?</span>
+</span><span class='line'>    <span class="o">!</span><span class="nb">self</span><span class="o">.</span><span class="n">csv_file_file_name</span><span class="o">.</span><span class="n">blank?</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">trigger_csv_generation</span>
+</span><span class='line'>    <span class="n">job</span> <span class="o">=</span> <span class="no">Delayed</span><span class="o">::</span><span class="no">Job</span><span class="o">.</span><span class="n">enqueue</span> <span class="no">GenerateCsvJob</span><span class="o">.</span><span class="n">new</span><span class="p">({</span><span class="ss">:csv_instance</span> <span class="o">=&gt;</span> <span class="nb">self</span><span class="p">})</span>
+</span><span class='line'>    <span class="n">update_attribute</span><span class="p">(</span><span class="ss">:job_id</span><span class="p">,</span> <span class="n">job</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">write_csv</span>
+</span><span class='line'>    <span class="n">file</span> <span class="o">=</span> <span class="no">Tempfile</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="nb">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;.csv&#39;</span><span class="o">]</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">begin</span>
+</span><span class='line'>      <span class="n">file</span><span class="o">.</span><span class="n">write</span> <span class="nb">self</span><span class="o">.</span><span class="n">data_string</span>
+</span><span class='line'>      <span class="nb">self</span><span class="o">.</span><span class="n">csv_file</span> <span class="o">=</span> <span class="n">file</span>
+</span><span class='line'>      <span class="nb">self</span><span class="o">.</span><span class="n">save</span>
+</span><span class='line'>    <span class="k">ensure</span>
+</span><span class='line'>      <span class="n">file</span><span class="o">.</span><span class="n">close</span>
+</span><span class='line'>      <span class="n">file</span><span class="o">.</span><span class="n">unlink</span> <span class="c1"># deletes the temp file</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kp">protected</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1"># Kevin says: override me in subclasses ...</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">filename</span>
+</span><span class='line'>    <span class="s1">&#39;exported_data_csv_&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">data_string</span>
+</span><span class='line'>    <span class="s1">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now that you&rsquo;ve seen it, let&rsquo;s discuss this model in more detail:</p>
+
+<p>The first line <code>'has_attached_file'</code> is the familiar way of configuring paperclip.</p>
+
+<ul>
+<li><p><code>acts_as_singleton</code>&mdash;I&rsquo;m only storing a single version of each <strong>ExportedDataCSV</strong> file &hellip; so I am using
+the <code>acts_as_singleton</code> gem &hellip; the model associated with the exported CSV file will be a singleton.</p></li>
+<li><p><code>generating?</code> &amp; <code>csv_file_exists?</code> are two methods I can use in my view to determine the immediate state of the CSV
+file.</p></li>
+<li><p><code>trigger_csv_generation</code> this method gets called by the application server&rsquo;s controller method to queue up the
+<code>write_csv_file</code> background job.</p></li>
+<li><p><code>write_csv_file</code> this is the actual method that turns a CSV string into a TempFile which is then handed off to
+Paperclip.</p></li>
+</ul>
+
+
+<p>Then there are two methods to be overridden in subclasses &hellip; oh yes, did I fail to mention? Since we are generating
+several distinct types of CSV files, each with its own name and data, I am using what&rsquo;s called Rails &lsquo;single table
+inheritance&rsquo; to create a set of subclasses to model this.</p>
+
+<h2>CreateExportedDataCsv db migration</h2>
+
+<p>Here&rsquo;s the migration to create the ExportedDataCSV table in the database.</p>
+
+<ul>
+<li>The presence of the <code>type</code> string makes the Single Table Inheritance work.</li>
+<li><code>has_attached_file</code> is the paperclip migration helper.</li>
+<li><code>job_id</code> is used to track the delayed_job and make the model&rsquo;s <code>generating?</code> method work.</li>
+<li><code>timestamps</code> will keep track of when it was last updated.</li>
+</ul>
+
+
+<figure class='code'><figcaption><span>db/migrate/create_exported_data_csv.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">CreateExportedDataCsv</span> <span class="o">&lt;</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Migration</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">up</span>
+</span><span class='line'>    <span class="n">create_table</span> <span class="ss">:exported_data_csvs</span> <span class="k">do</span> <span class="o">|</span><span class="n">t</span><span class="o">|</span>
+</span><span class='line'>      <span class="n">t</span><span class="o">.</span><span class="n">timestamps</span>
+</span><span class='line'>      <span class="n">t</span><span class="o">.</span><span class="n">has_attached_file</span> <span class="ss">:csv_file</span>
+</span><span class='line'>      <span class="n">t</span><span class="o">.</span><span class="n">string</span> <span class="ss">:type</span>
+</span><span class='line'>      <span class="n">t</span><span class="o">.</span><span class="n">integer</span> <span class="ss">:job_id</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">down</span>
+</span><span class='line'>    <span class="n">drop_table</span> <span class="ss">:exported_data_csvs</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Subclassed Models</h2>
+
+<p>With the previous two files written, it&rsquo;s trivial to create a CSV file:</p>
+
+<figure class='code'><figcaption><span>app/models/users_csv.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">UsersCsv</span> <span class="o">&lt;</span> <span class="no">ExportedDataCsv</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kp">protected</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">filename</span>
+</span><span class='line'>    <span class="s1">&#39;users_&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">data_string</span>
+</span><span class='line'>    <span class="no">User</span><span class="o">.</span><span class="n">all</span><span class="o">.</span><span class="n">to_comma</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The information to be put into the CSV file is simply a string. Please see <a href="https://github.com/crafterm/comma">https://github.com/crafterm/comma</a> for more
+information on working with CSV files in Ruby.</p>
+
+<h2>GenerateCsvJob: The Delayed Job</h2>
+
+<p>We use the now-standard <a href="https://github.com/collectiveidea/delayed_job">delayed_job</a> gem to handle the passing off of the
+long running task (the <code>write_csv</code> method in the root model).</p>
+
+<p>Here&rsquo;s my &lsquo;job&rsquo; file:</p>
+
+<figure class='code'><figcaption><span>lib/delayed_jobs/generate_csv_job.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">GenerateCsvJob</span> <span class="o">&lt;</span> <span class="no">Struct</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="ss">:options</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">perform</span>
+</span><span class='line'>    <span class="n">csv_instance</span> <span class="o">=</span> <span class="n">options</span><span class="o">[</span><span class="ss">:csv_instance</span><span class="o">]</span>
+</span><span class='line'>    <span class="k">begin</span>
+</span><span class='line'>      <span class="n">csv_instance</span><span class="o">.</span><span class="n">write_csv</span>
+</span><span class='line'>    <span class="k">ensure</span>
+</span><span class='line'>      <span class="n">csv_instance</span><span class="o">.</span><span class="n">update_attribute</span><span class="p">(</span><span class="ss">:job_id</span><span class="p">,</span> <span class="kp">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Credit &ndash; this stackoverflow post was very helpful to me: <a href="http://stackoverflow.com/questions/5582017/polling-with-delayed-job">http://stackoverflow.com/questions/5582017/polling-with-delayed-job</a></p>
+
+<h2>The Controller</h2>
+
+<p>The controller is pretty simple &hellip; there are two methods.</p>
+
+<ol>
+<li><code>generate_csv</code> &ndash; queue up a new delayed job to generate the CSV file and immediately <code>redirect_to :back</code></li>
+<li><code>index</code> &ndash; point the client to the S3 &lsquo;expiring url&rsquo; path (the URL only lasts 5 minutes) to download the CSV file,
+if it exists.</li>
+</ol>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">index</span>
+</span><span class='line'>  <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|</span>
+</span><span class='line'>    <span class="nb">format</span><span class="o">.</span><span class="n">csv</span> <span class="k">do</span>
+</span><span class='line'>      <span class="k">if</span> <span class="no">Rails</span><span class="o">.</span><span class="n">env</span><span class="o">[</span><span class="sr">/production|demo/</span><span class="o">]</span>
+</span><span class='line'>        <span class="n">redirect_to</span> <span class="no">UsersCsv</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">csv_file</span><span class="o">.</span><span class="n">expiring_url</span><span class="p">(</span><span class="mi">5</span><span class="o">.</span><span class="n">minutes</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">else</span>
+</span><span class='line'>        <span class="n">send_file</span> <span class="no">UsersCsv</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">csv_file</span><span class="o">.</span><span class="n">path</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">generate_csv</span>
+</span><span class='line'>  <span class="no">UsersCsv</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">trigger_csv_generation</span>
+</span><span class='line'>  <span class="n">flash</span><span class="o">[</span><span class="ss">:notice</span><span class="o">]</span> <span class="o">=</span> <span class="s2">&quot;We&#39;re generating your CSV file. Refresh the page in a minute or so to download it.&quot;</span>
+</span><span class='line'>  <span class="n">redirect_to</span> <span class="ss">:back</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>routes.rb</h2>
+
+<p>In the routes file we just need to add a custom route to allow the client to access the <code>generate_csv</code> action that we
+created in the controller:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="n">resources</span> <span class="ss">:users</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">collection</span> <span class="k">do</span>
+</span><span class='line'>      <span class="n">post</span> <span class="ss">:generate_csv</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>The last tricky bit &hellip; the view</h2>
+
+<p>The last tricky piece is the view. In the view we determine whether a CSV has been generated yet &hellip; if not, we allow the
+user to trigger the generation of a CSV file &hellip; if so we show the link to it, but also allow the user to refresh the
+file as it may be far out of date.</p>
+
+<p>Since we&rsquo;re building a framework that will allow us to have many different CSV files &hellip; we first create an abstracted
+partial that will accept various input variables and that we can use all over our site:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="cp">&lt;%</span> <span class="k">if</span> <span class="n">csv_object</span><span class="o">.</span><span class="n">generating?</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  Generating CSV ...</span>
+</span><span class='line'><span class="cp">&lt;%</span> <span class="k">else</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%</span> <span class="k">unless</span> <span class="n">csv_object</span><span class="o">.</span><span class="n">csv_file_exists?</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">    No CSV exists.</span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%</span> <span class="k">else</span> <span class="c1"># CSV exists </span><span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">    </span><span class="cp">&lt;%</span> <span class="n">shortened_filename</span> <span class="o">=</span> <span class="n">csv_object</span><span class="o">.</span><span class="n">csv_file_file_name</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="sr">/(^.*)_/</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;.csv&#39;</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">    </span><span class="cp">&lt;%=</span> <span class="n">link_to</span> <span class="n">shortened_filename</span><span class="p">,</span> <span class="n">download_path</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">    Last updated:</span>
+</span><span class='line'><span class="x">    </span><span class="cp">&lt;%</span> <span class="n">csv_object</span><span class="o">.</span><span class="n">updated_at</span><span class="o">.</span><span class="n">to_s</span><span class="p">(</span><span class="ss">:viewable</span><span class="p">)</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%=</span> <span class="n">link_to</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="n">csv_object</span><span class="o">.</span><span class="n">csv_file_exists?</span> <span class="p">?</span> <span class="s1">&#39;Update&#39;</span> <span class="p">:</span> <span class="s1">&#39;Generate&#39;</span><span class="si">}</span><span class="s2"> CSV.&quot;</span><span class="p">,</span> <span class="n">trigger_generation_path</span><span class="p">,</span> <span class="ss">:method</span> <span class="o">=&gt;</span> <span class="ss">:post</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%</span> <span class="k">end</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="cp">&lt;%</span> <span class="k">end</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here&rsquo;s an example of how to call the partial:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="x">&lt;li&gt;</span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%=</span> <span class="n">link_to</span> <span class="s1">&#39;Users&#39;</span><span class="p">,</span> <span class="n">admin_users_path</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  &lt;br/&gt;</span>
+</span><span class='line'><span class="x">  Download all:</span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%=</span> <span class="n">render</span> <span class="ss">:partial</span> <span class="o">=&gt;</span> <span class="s1">&#39;/common/csv_generation_ui&#39;</span><span class="p">,</span> <span class="ss">:locals</span> <span class="o">=&gt;</span> <span class="p">{</span><span class="ss">:csv_object</span> <span class="o">=&gt;</span> <span class="no">UsersCsv</span><span class="o">.</span><span class="n">instance</span><span class="p">,</span> <span class="ss">:trigger_generation_path</span> <span class="o">=&gt;</span> <span class="n">generate_csv_admin_users_path</span><span class="p">,</span> <span class="ss">:download_path</span> <span class="o">=&gt;</span> <span class="n">users_stories_path</span><span class="p">(</span><span class="ss">:format</span> <span class="o">=&gt;</span> <span class="ss">:csv</span><span class="p">)}</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">&lt;/li&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<h2>Summary</h2>
+
+<p>There are lots of moving parts in this scheme but once you get your head around it all, it&rsquo;s a pretty straightforward
+pattern and a variant of this could be used in other situations as well. Enjoy and good luck!</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Trowbridge</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2012-05-30T00:00:00-07:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/software/'>software</a>
+  
+</span>
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2010-05-21-integrating-mercurial-with-the-OSX-opendiff-tool" title="Previous Post: Integrating Mercurial with the OSX opendiff tool">&laquo; Integrating Mercurial with the OSX opendiff tool</a>
+      
+      
+        <a class="basic-alignment right" href="/2012-06-07-monkeypatch-newrelic-so-that-it-doesnt-completely-hijack-the-process-action-method" title="Next Post: Monkeypatch NewRelic so that it doesn't completely hijack the 'process_action' method">Monkeypatch NewRelic so that it doesn&#8217;t completely hijack the &#8216;process_action&#8217; method &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  &copy;2008-2014 by Kevin Trowbridge&mdash;All rights reserved. Thanks for visiting my site.
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a>.</span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'kevinmtrowbridge';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+</body>
+</html>

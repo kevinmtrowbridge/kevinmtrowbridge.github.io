@@ -1,0 +1,789 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Software | Kevin Trowbridge]]></title>
+  <link href="http://www.kevinmtrowbridge.com/blog/categories/software/atom.xml" rel="self"/>
+  <link href="http://www.kevinmtrowbridge.com/"/>
+  <updated>2014-12-02T18:10:34-08:00</updated>
+  <id>http://www.kevinmtrowbridge.com/</id>
+  <author>
+    <name><![CDATA[Kevin Trowbridge]]></name>
+    <email><![CDATA[kevinmtrowbridge@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Monkeypatch NewRelic So That It Doesn't Completely Hijack the 'Process_action' Method]]></title>
+    <link href="http://www.kevinmtrowbridge.com/2012-06-07-monkeypatch-newrelic-so-that-it-doesnt-completely-hijack-the-process-action-method"/>
+    <updated>2012-06-07T00:00:00-07:00</updated>
+    <id>http://www.kevinmtrowbridge.com/monkeypatch-newrelic-so-that-it-doesnt-completely-hijack-the-process-action-method</id>
+    <content type="html"><![CDATA[I recently upgraded a site from Rails 2 to Rails 3 and moved it to Heroku.  Once the upgrade was complete, I eagerly 
+opened up the NewRelic performance monitoring tools to see how much speedier the application had become.
+
+To my dismay, the charts were all completely blank.  I carried out the usual debugging steps ... turned up the NewRelic 
+agent logging verbosity ... but I couldn't find anything wrong.  Then I discovered that NewRelic has a _development mode_
+---which logs requests made locally.  I turned this on and took a look at these charts.  They were also completely 
+blank!  So I realized that the problem was not that my application wasn't properly reporting information to the NewRelic 
+servers, the problem was that the application wasn't even logging it correctly.
+
+![webpage with totally blank charts](/assets//newrelic_alias_method_chain_process_action.jpg "Screenshot showing New Relic tool with totally blank charts.")
+
+I opened up RubyMine's trusty 'External Libraries' menu and started placing breakpoints in the `newrelic_rpm` gem, 
+hoping to find the source of the problem.  Hours later I eventually discovered the problem:
+
+NewRelic overrides the `ActionController#process_action` method to initialize its performance monitoring code.  This 
+trick is somewhat well known and other codebases may well fiddle with this method as well. In my case, the (Rails 2 era) 
+user session / state (pre-Devise) code uses `alias_method_chain` on this method, renaming it to 
+`process_action_with_current_user_assignment` and `process_action_without_current_user_assignment`. Renaming the method 
+in this way was blocking NewRelic from working correctly.
+
+Once I knew that this was the problem, I was able to come up with a MonkeyPatch to get NewRelic to allow other pieces 
+of code to use `alias_method_chain` on the `process_action` method as well.
+
+Place the following code into your `/config/initializers` directory:
+
+<figure class='code'><figcaption><span>config/initializers/newrelic_monkeypatch.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">module</span> <span class="nn">NewRelic</span>
+</span><span class='line'>  <span class="k">module</span> <span class="nn">Agent</span>
+</span><span class='line'>    <span class="k">module</span> <span class="nn">Instrumentation</span>
+</span><span class='line'>      <span class="k">module</span> <span class="nn">Rails3</span>
+</span><span class='line'>        <span class="k">module</span> <span class="nn">ActionController</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">newrelic_write_attr</span><span class="p">(</span><span class="n">attr_name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="c1"># :nodoc:</span>
+</span><span class='line'>            <span class="n">write_inheritable_attribute</span><span class="p">(</span><span class="n">attr_name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class='line'>          <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">newrelic_read_attr</span><span class="p">(</span><span class="n">attr_name</span><span class="p">)</span> <span class="c1"># :nodoc:</span>
+</span><span class='line'>            <span class="n">read_inheritable_attribute</span><span class="p">(</span><span class="n">attr_name</span><span class="p">)</span>
+</span><span class='line'>          <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="c1"># determine the path that is used in the metric name for</span>
+</span><span class='line'>          <span class="c1"># the called controller action</span>
+</span><span class='line'>          <span class="k">def</span> <span class="nf">newrelic_metric_path</span><span class="p">(</span><span class="n">action_name_override</span> <span class="o">=</span> <span class="kp">nil</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">action_part</span> <span class="o">=</span> <span class="n">action_name_override</span> <span class="o">||</span> <span class="n">action_name</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">action_name_override</span> <span class="o">||</span> <span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="o">.</span><span class="n">action_methods</span><span class="o">.</span><span class="n">include?</span><span class="p">(</span><span class="n">action_part</span><span class="p">)</span>
+</span><span class='line'>              <span class="s2">&quot;</span><span class="si">#{</span><span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="o">.</span><span class="n">controller_path</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="n">action_part</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>            <span class="k">else</span>
+</span><span class='line'>              <span class="s2">&quot;</span><span class="si">#{</span><span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="o">.</span><span class="n">controller_path</span><span class="si">}</span><span class="s2">/(other)&quot;</span>
+</span><span class='line'>            <span class="k">end</span>
+</span><span class='line'>          <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="k">def</span> <span class="nf">process_action_with_newrelic_trace</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+</span><span class='line'>            <span class="c1"># skip instrumentation if we are in an ignored action</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">_is_filtered?</span><span class="p">(</span><span class="s1">&#39;do_not_trace&#39;</span><span class="p">)</span>
+</span><span class='line'>              <span class="no">NewRelic</span><span class="o">::</span><span class="no">Agent</span><span class="o">.</span><span class="n">disable_all_tracing</span> <span class="k">do</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">process_action_without_newrelic_trace</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+</span><span class='line'>              <span class="k">end</span>
+</span><span class='line'>            <span class="k">end</span>
+</span><span class='line'>            <span class="n">perform_action_with_newrelic_trace</span><span class="p">(</span><span class="ss">:category</span> <span class="o">=&gt;</span> <span class="ss">:controller</span><span class="p">,</span> <span class="ss">:name</span> <span class="o">=&gt;</span> <span class="nb">self</span><span class="o">.</span><span class="n">action_name</span><span class="p">,</span> <span class="ss">:path</span> <span class="o">=&gt;</span> <span class="n">newrelic_metric_path</span><span class="p">,</span> <span class="ss">:params</span> <span class="o">=&gt;</span> <span class="n">request</span><span class="o">.</span><span class="n">filtered_parameters</span><span class="p">,</span> <span class="ss">:class_name</span> <span class="o">=&gt;</span> <span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">do</span>
+</span><span class='line'>              <span class="n">process_action_without_newrelic_trace</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+</span><span class='line'>            <span class="k">end</span>
+</span><span class='line'>          <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">end</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="no">DependencyDetection</span><span class="o">.</span><span class="n">defer</span> <span class="k">do</span>
+</span><span class='line'>  <span class="vi">@name</span> <span class="o">=</span> <span class="ss">:rails3_controller</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">depends_on</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">defined?</span><span class="p">(</span><span class="o">::</span><span class="no">Rails</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="o">::</span><span class="no">Rails</span><span class="o">::</span><span class="no">VERSION</span><span class="o">::</span><span class="no">MAJOR</span><span class="o">.</span><span class="n">to_i</span> <span class="o">==</span> <span class="mi">3</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">depends_on</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">defined?</span><span class="p">(</span><span class="no">ActionController</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">defined?</span><span class="p">(</span><span class="no">ActionController</span><span class="o">::</span><span class="no">Base</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">executes</span> <span class="k">do</span>
+</span><span class='line'>    <span class="no">NewRelic</span><span class="o">::</span><span class="no">Agent</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span> <span class="s1">&#39;Installing Rails 3 Controller instrumentation&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">executes</span> <span class="k">do</span>
+</span><span class='line'>    <span class="k">class</span> <span class="nc">ActionController</span><span class="o">::</span><span class="no">Base</span>
+</span><span class='line'>      <span class="kp">include</span> <span class="no">NewRelic</span><span class="o">::</span><span class="no">Agent</span><span class="o">::</span><span class="no">Instrumentation</span><span class="o">::</span><span class="no">ControllerInstrumentation</span>
+</span><span class='line'>      <span class="kp">include</span> <span class="no">NewRelic</span><span class="o">::</span><span class="no">Agent</span><span class="o">::</span><span class="no">Instrumentation</span><span class="o">::</span><span class="no">Rails3</span><span class="o">::</span><span class="no">ActionController</span>
+</span><span class='line'>      <span class="n">alias_method_chain</span> <span class="ss">:process_action</span><span class="p">,</span> <span class="ss">:newrelic_trace</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+Credit to: https://gist.github.com/959784]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Heroku Necessities --- Generate CSV Files in the Background With Delayed_job and Store Them on S3 With Paperclip]]></title>
+    <link href="http://www.kevinmtrowbridge.com/2012-05-30-heroku-necessities-generate-CSV-files-in-the-background"/>
+    <updated>2012-05-30T00:00:00-07:00</updated>
+    <id>http://www.kevinmtrowbridge.com/heroku-necessities-generate-CSV-files-in-the-background-with-delayed-job-and-store-them-on-S3-with-paperclip</id>
+    <content type="html"><![CDATA[I'm trying to get back into technical blogging as I encounter interesting situations on a daily basis ... and I get so 
+much information from others doing the same thing.
+
+In this case I'm moving a fairly large blog from a custom deployment platform on EngineYard, to Heroku.  Heroku enforces 
+a 30-second request timeout---so the webserver can't be used for heavy, long-running tasks like generating a large CSV 
+file.
+
+The solution is to move the generation of the CSV file into a background task, and store the generated CSV file on 
+Amazon S3.  Since in my case the data that I am compiling into the CSV file is private, I also show how to configure 
+Paperclip to make the generated CSV file only downloadable to authenticated users.
+
+Here's a brief (30 second) video showing the UI you can build by following these steps:
+
+<iframe src="//player.vimeo.com/video/43075821" width="500" height="194" style="max-width: 100%" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe> 
+<p>
+  <a href="http://vimeo.com/43075821">Heroku Necessities: generate CSV files in the background with “delayed_job” and store them on S3 with “paperclip” …</a> 
+  from 
+  <a href="http://vimeo.com/user2012540">Kevin Trowbridge</a> on <a href="https://vimeo.com">Vimeo</a>.
+</p>
+
+
+## The Model: ExportedDataCsv.rb
+
+In my case I have a few large sets of data that are stored in the database, that need to be exportable from the system 
+for reporting and administrative tasks.  Think &#8230; the &#8216;Users&#8217; table (full list of users with email addresses, names, 
+and so on) &#8230; or the &#8216;Stories&#8217; table (for a blog, all of the &#8216;stories&#8217; that have ever been written for the site).  So 
+this is stateful.  We&#8217;re going to turn the Users table into a CSV file and save it on Amazon S3.  We&#8217;ll be storing 
+specific information about the file:
+
+* What&#8217;s its exact name?
+* When was it generated?
+* Is it actively generating right now, or is it available for download?
+
+We&#8217;re using Paperclip to handle the mechanics of saving the file to S3, but we&#8217;ll need to setup a model in order to 
+configure paperclip, as well as to store that stateful information.
+
+<figure class='code'><figcaption><span>app/models/exported_data_csv.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">ExportedDataCsv</span> <span class="o">&lt;</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Base</span>
+</span><span class='line'>  <span class="n">has_attached_file</span> <span class="ss">:csv_file</span><span class="p">,</span> <span class="p">{</span><span class="ss">:s3_protocol</span> <span class="o">=&gt;</span> <span class="s1">&#39;https&#39;</span><span class="p">,</span> <span class="ss">:s3_permissions</span> <span class="o">=&gt;</span> <span class="s2">&quot;authenticated_read&quot;</span><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">acts_as_singleton</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">generating?</span>
+</span><span class='line'>    <span class="n">job_id</span><span class="o">.</span><span class="n">present?</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">csv_file_exists?</span>
+</span><span class='line'>    <span class="o">!</span><span class="nb">self</span><span class="o">.</span><span class="n">csv_file_file_name</span><span class="o">.</span><span class="n">blank?</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">trigger_csv_generation</span>
+</span><span class='line'>    <span class="n">job</span> <span class="o">=</span> <span class="no">Delayed</span><span class="o">::</span><span class="no">Job</span><span class="o">.</span><span class="n">enqueue</span> <span class="no">GenerateCsvJob</span><span class="o">.</span><span class="n">new</span><span class="p">({</span><span class="ss">:csv_instance</span> <span class="o">=&gt;</span> <span class="nb">self</span><span class="p">})</span>
+</span><span class='line'>    <span class="n">update_attribute</span><span class="p">(</span><span class="ss">:job_id</span><span class="p">,</span> <span class="n">job</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">write_csv</span>
+</span><span class='line'>    <span class="n">file</span> <span class="o">=</span> <span class="no">Tempfile</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="nb">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;.csv&#39;</span><span class="o">]</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">begin</span>
+</span><span class='line'>      <span class="n">file</span><span class="o">.</span><span class="n">write</span> <span class="nb">self</span><span class="o">.</span><span class="n">data_string</span>
+</span><span class='line'>      <span class="nb">self</span><span class="o">.</span><span class="n">csv_file</span> <span class="o">=</span> <span class="n">file</span>
+</span><span class='line'>      <span class="nb">self</span><span class="o">.</span><span class="n">save</span>
+</span><span class='line'>    <span class="k">ensure</span>
+</span><span class='line'>      <span class="n">file</span><span class="o">.</span><span class="n">close</span>
+</span><span class='line'>      <span class="n">file</span><span class="o">.</span><span class="n">unlink</span> <span class="c1"># deletes the temp file</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kp">protected</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1"># Kevin says: override me in subclasses ...</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">filename</span>
+</span><span class='line'>    <span class="s1">&#39;exported_data_csv_&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">data_string</span>
+</span><span class='line'>    <span class="s1">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+Now that you&#8217;ve seen it, let&#8217;s discuss this model in more detail:
+
+The first line `&#8217;has_attached_file&#8217;` is the familiar way of configuring paperclip.
+
+* `acts_as_singleton`&#8212;I&#8217;m only storing a single version of each **ExportedDataCSV** file &#8230; so I am using 
+the `acts_as_singleton` gem &#8230; the model associated with the exported CSV file will be a singleton.
+
+* `generating?` & `csv_file_exists?` are two methods I can use in my view to determine the immediate state of the CSV 
+file.
+
+* `trigger_csv_generation` this method gets called by the application server&#8217;s controller method to queue up the 
+`write_csv_file` background job.
+
+* `write_csv_file` this is the actual method that turns a CSV string into a TempFile which is then handed off to 
+Paperclip.
+
+Then there are two methods to be overridden in subclasses &#8230; oh yes, did I fail to mention? Since we are generating 
+several distinct types of CSV files, each with its own name and data, I am using what&#8217;s called Rails &#8216;single table 
+inheritance&#8217; to create a set of subclasses to model this.
+
+
+## CreateExportedDataCsv db migration
+
+Here&#8217;s the migration to create the ExportedDataCSV table in the database.
+
+* The presence of the `type` string makes the Single Table Inheritance work.
+* `has_attached_file` is the paperclip migration helper.
+* `job_id` is used to track the delayed_job and make the model&#8217;s `generating?` method work.
+* `timestamps` will keep track of when it was last updated.
+
+<figure class='code'><figcaption><span>db/migrate/create_exported_data_csv.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">CreateExportedDataCsv</span> <span class="o">&lt;</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Migration</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">up</span>
+</span><span class='line'>    <span class="n">create_table</span> <span class="ss">:exported_data_csvs</span> <span class="k">do</span> <span class="o">|</span><span class="n">t</span><span class="o">|</span>
+</span><span class='line'>      <span class="n">t</span><span class="o">.</span><span class="n">timestamps</span>
+</span><span class='line'>      <span class="n">t</span><span class="o">.</span><span class="n">has_attached_file</span> <span class="ss">:csv_file</span>
+</span><span class='line'>      <span class="n">t</span><span class="o">.</span><span class="n">string</span> <span class="ss">:type</span>
+</span><span class='line'>      <span class="n">t</span><span class="o">.</span><span class="n">integer</span> <span class="ss">:job_id</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">down</span>
+</span><span class='line'>    <span class="n">drop_table</span> <span class="ss">:exported_data_csvs</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+## Subclassed Models 
+
+With the previous two files written, it&#8217;s trivial to create a CSV file:
+
+<figure class='code'><figcaption><span>app/models/users_csv.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">UsersCsv</span> <span class="o">&lt;</span> <span class="no">ExportedDataCsv</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kp">protected</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">filename</span>
+</span><span class='line'>    <span class="s1">&#39;users_&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">data_string</span>
+</span><span class='line'>    <span class="no">User</span><span class="o">.</span><span class="n">all</span><span class="o">.</span><span class="n">to_comma</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+The information to be put into the CSV file is simply a string. Please see https://github.com/crafterm/comma for more 
+information on working with CSV files in Ruby.
+
+
+## GenerateCsvJob: The Delayed Job
+
+We use the now-standard [delayed_job](https://github.com/collectiveidea/delayed_job) gem to handle the passing off of the 
+long running task (the `write_csv` method in the root model).
+
+Here&#8217;s my &#8216;job&#8217; file:
+
+<figure class='code'><figcaption><span>lib/delayed_jobs/generate_csv_job.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">GenerateCsvJob</span> <span class="o">&lt;</span> <span class="no">Struct</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="ss">:options</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">perform</span>
+</span><span class='line'>    <span class="n">csv_instance</span> <span class="o">=</span> <span class="n">options</span><span class="o">[</span><span class="ss">:csv_instance</span><span class="o">]</span>
+</span><span class='line'>    <span class="k">begin</span>
+</span><span class='line'>      <span class="n">csv_instance</span><span class="o">.</span><span class="n">write_csv</span>
+</span><span class='line'>    <span class="k">ensure</span>
+</span><span class='line'>      <span class="n">csv_instance</span><span class="o">.</span><span class="n">update_attribute</span><span class="p">(</span><span class="ss">:job_id</span><span class="p">,</span> <span class="kp">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+Credit &#8211; this stackoverflow post was very helpful to me: http://stackoverflow.com/questions/5582017/polling-with-delayed-job
+
+
+## The Controller
+
+The controller is pretty simple &#8230; there are two methods.
+
+1. `generate_csv` &#8211; queue up a new delayed job to generate the CSV file and immediately `redirect_to :back`
+2. `index` &#8211; point the client to the S3 &#8216;expiring url&#8217; path (the URL only lasts 5 minutes) to download the CSV file, 
+  if it exists.
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">index</span>
+</span><span class='line'>  <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|</span>
+</span><span class='line'>    <span class="nb">format</span><span class="o">.</span><span class="n">csv</span> <span class="k">do</span>
+</span><span class='line'>      <span class="k">if</span> <span class="no">Rails</span><span class="o">.</span><span class="n">env</span><span class="o">[</span><span class="sr">/production|demo/</span><span class="o">]</span>
+</span><span class='line'>        <span class="n">redirect_to</span> <span class="no">UsersCsv</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">csv_file</span><span class="o">.</span><span class="n">expiring_url</span><span class="p">(</span><span class="mi">5</span><span class="o">.</span><span class="n">minutes</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">else</span>
+</span><span class='line'>        <span class="n">send_file</span> <span class="no">UsersCsv</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">csv_file</span><span class="o">.</span><span class="n">path</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">generate_csv</span>
+</span><span class='line'>  <span class="no">UsersCsv</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">trigger_csv_generation</span>
+</span><span class='line'>  <span class="n">flash</span><span class="o">[</span><span class="ss">:notice</span><span class="o">]</span> <span class="o">=</span> <span class="s2">&quot;We&#39;re generating your CSV file. Refresh the page in a minute or so to download it.&quot;</span>
+</span><span class='line'>  <span class="n">redirect_to</span> <span class="ss">:back</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+  
+
+
+## routes.rb
+
+In the routes file we just need to add a custom route to allow the client to access the `generate_csv` action that we 
+created in the controller:
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="n">resources</span> <span class="ss">:users</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">collection</span> <span class="k">do</span>
+</span><span class='line'>      <span class="n">post</span> <span class="ss">:generate_csv</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+    
+
+## The last tricky bit &#8230; the view
+
+The last tricky piece is the view. In the view we determine whether a CSV has been generated yet &#8230; if not, we allow the 
+user to trigger the generation of a CSV file &#8230; if so we show the link to it, but also allow the user to refresh the 
+file as it may be far out of date.
+
+Since we&#8217;re building a framework that will allow us to have many different CSV files &#8230; we first create an abstracted 
+partial that will accept various input variables and that we can use all over our site:
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="cp">&lt;%</span> <span class="k">if</span> <span class="n">csv_object</span><span class="o">.</span><span class="n">generating?</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  Generating CSV ...</span>
+</span><span class='line'><span class="cp">&lt;%</span> <span class="k">else</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%</span> <span class="k">unless</span> <span class="n">csv_object</span><span class="o">.</span><span class="n">csv_file_exists?</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">    No CSV exists.</span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%</span> <span class="k">else</span> <span class="c1"># CSV exists </span><span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">    </span><span class="cp">&lt;%</span> <span class="n">shortened_filename</span> <span class="o">=</span> <span class="n">csv_object</span><span class="o">.</span><span class="n">csv_file_file_name</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="sr">/(^.*)_/</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;.csv&#39;</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">    </span><span class="cp">&lt;%=</span> <span class="n">link_to</span> <span class="n">shortened_filename</span><span class="p">,</span> <span class="n">download_path</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">    Last updated:</span>
+</span><span class='line'><span class="x">    </span><span class="cp">&lt;%</span> <span class="n">csv_object</span><span class="o">.</span><span class="n">updated_at</span><span class="o">.</span><span class="n">to_s</span><span class="p">(</span><span class="ss">:viewable</span><span class="p">)</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%=</span> <span class="n">link_to</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="n">csv_object</span><span class="o">.</span><span class="n">csv_file_exists?</span> <span class="p">?</span> <span class="s1">&#39;Update&#39;</span> <span class="p">:</span> <span class="s1">&#39;Generate&#39;</span><span class="si">}</span><span class="s2"> CSV.&quot;</span><span class="p">,</span> <span class="n">trigger_generation_path</span><span class="p">,</span> <span class="ss">:method</span> <span class="o">=&gt;</span> <span class="ss">:post</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%</span> <span class="k">end</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="cp">&lt;%</span> <span class="k">end</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span></code></pre></td></tr></table></div></figure>
+  
+Here&#8217;s an example of how to call the partial:
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="x">&lt;li&gt;</span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%=</span> <span class="n">link_to</span> <span class="s1">&#39;Users&#39;</span><span class="p">,</span> <span class="n">admin_users_path</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  &lt;br/&gt;</span>
+</span><span class='line'><span class="x">  Download all:</span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%=</span> <span class="n">render</span> <span class="ss">:partial</span> <span class="o">=&gt;</span> <span class="s1">&#39;/common/csv_generation_ui&#39;</span><span class="p">,</span> <span class="ss">:locals</span> <span class="o">=&gt;</span> <span class="p">{</span><span class="ss">:csv_object</span> <span class="o">=&gt;</span> <span class="no">UsersCsv</span><span class="o">.</span><span class="n">instance</span><span class="p">,</span> <span class="ss">:trigger_generation_path</span> <span class="o">=&gt;</span> <span class="n">generate_csv_admin_users_path</span><span class="p">,</span> <span class="ss">:download_path</span> <span class="o">=&gt;</span> <span class="n">users_stories_path</span><span class="p">(</span><span class="ss">:format</span> <span class="o">=&gt;</span> <span class="ss">:csv</span><span class="p">)}</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">&lt;/li&gt;</span>
+</span></code></pre></td></tr></table></div></figure>      
+
+
+## Summary
+
+There are lots of moving parts in this scheme but once you get your head around it all, it&#8217;s a pretty straightforward 
+pattern and a variant of this could be used in other situations as well. Enjoy and good luck!
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Integrating Mercurial With the OSX Opendiff Tool]]></title>
+    <link href="http://www.kevinmtrowbridge.com/2010-05-21-integrating-mercurial-with-the-OSX-opendiff-tool"/>
+    <updated>2010-05-21T00:00:00-07:00</updated>
+    <id>http://www.kevinmtrowbridge.com/integrating-mercurial-with-the-OSX-opendiff-tool</id>
+    <content type="html"><![CDATA[The command line diff tool produces textual diffs.  These are not useful for visualizing complicated changes. 
+However, the Apple Developer Toolset includes a pretty good graphical diff tool called FileMerge. You can pop open 
+FileMerge from the command line with the command `opendiff`.
+
+The use of opendiff is fairly simple ... just type `opendiff file1 file2` at the OSX command line, and a graphical diff 
+window pops open.
+
+But when we are working with version control tools, and we want to view which changes we have made to a file ... a diff 
+is generated by the version control software itself ... so there aren't two files to easily diff ...
+
+However, you can integrate opendiff into mercurial, so that when you type `hg diff`, you see a diff pop up in opendiff.
+
+I got this information from the [mercurial wiki](http://mercurial.selenic.com/wiki/TipsAndTricks#Using_FileMerge.app.2BAC8-opendiff_as_the_diff_program_.28OS_X.29)
+
+I got this working with the following procedure:
+
+1. `cd ~/Desktop`
+2. `svn co http://soft.vub.ac.be/svn-gen/bdefrain/fmscripts/`
+3. `cd fmscripts`
+4. `sudo make install`
+5. `mate ~/.hgrc`
+6. Paste the configuration lines from that mercurial wiki referenced above into the `.hgrc` file, save, and exit.
+
+Now you can type:
+
+`hg opendiff file`
+
+And see the results in opendiff:
+
+![screenshot of OSX opendiff tool](/assets//opendiff_mercurial_integration.png "Screenshot of OSX opendiff tool.")]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Migrate to Rails 3 and Ruby 1.9, While Still Working on Rails 2, Ruby 1.8 Projects]]></title>
+    <link href="http://www.kevinmtrowbridge.com/2010-05-19-migrate-to-rails-3-and-ruby-1-9-while-working-on-rails-2-ruby-1-8-projects"/>
+    <updated>2010-05-19T00:00:00-07:00</updated>
+    <id>http://www.kevinmtrowbridge.com/migrate-to-rails-3-and-ruby-1-9-while-working-on-rails-2-ruby-1-8-projects</id>
+    <content type="html"><![CDATA[I've been hearing about Rails 3 for quite a while now. I thought it was about time to install it and take it for a 
+drive. And I wanted to upgrade to Ruby 1.9 too, while I was at it.
+
+But I've got several projects that still need Ruby 1.8.6 to run. So I discovered a tool called _Ruby version manager_ 
+(**RVM**) that allows me to install many versions of ruby and switch between them (the tool works by storing different 
+versions of ruby and gems in specific directories, and juggling the environment's paths).
+
+Rvm works well and greatly simplifies the pain of working with projects written in Rails 3 and Rails 2 on the same 
+machine.
+
+
+## Installing Ruby 1.9
+
+Rails 3 can use either Ruby 1.8.7 or 1.9. It's probably time to start switching to Ruby 1.9, correct? But there is a 
+problem: I have (and you probably do too) bunches of projects that I do not want to (or maybe can't) migrate to the new 
+version of Ruby, or at least certainly not today. And so how to install and manage two versions of Ruby?
+
+RVM is a command line tool which allows you to easily install, manage and work with multiple ruby environments from 
+interpreters to sets of gems.
+
+I suggest you follow the [installation instructions](https://rvm.io/rvm/install).
+
+Once you have installed Rvm, use it to painlessly install Ruby 1.9:
+
+Note: I initially tried to install Ruby 1.9.2, but I ran into some wicked bugs when I tried to boot Rails. These issues 
+are documented here in this Ruby language [bug report](http://redmine.ruby-lang.org/issues/show/1788). There, folks 
+recommended upgrading to the ruby-head version. So I did that, and it resolved the issues that I had.
+
+<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> rvm install ruby-head
+<span class="go">Installing Ruby from source to: /Users/kmtrowbr/.rvm/rubies/ruby-head</span>
+<span class="go">Updating ruby from http://svn.ruby-lang.org/repos/ruby/trunk</span>
+<span class="go">Configuring ruby-head, this may take a while depending on your cpu(s)...</span>
+<span class="go">Compiling ruby-head, this may take a while, depending on your cpu(s)...</span>
+<span class="go">Installing ruby-head</span>
+<span class="go">Installation of ruby-head is complete.</span>
+<span class="go">Updating rubygems for /Users/kmtrowbr/.rvm/gems/ruby-head@global</span>
+<span class="go">Updating rubygems for /Users/kmtrowbr/.rvm/gems/ruby-head</span>
+<span class="go">Installing gems for ruby-head.</span>
+<span class="go">Installing rdoc to /Users/kmtrowbr/.rvm/gems/ruby-head@global</span>
+<span class="go">Installing rdoc to /Users/kmtrowbr/.rvm/gems/ruby-head</span>
+<span class="go">Installing rake to /Users/kmtrowbr/.rvm/gems/ruby-head@global</span>
+<span class="go">Installing rake to /Users/kmtrowbr/.rvm/gems/ruby-head</span>
+<span class="go">Installation of gems for ruby-head is complete.</span></code></pre></div>
+
+Rvm works on a per-user-basis by playing with the shell paths. It places ruby into a hidden .rvm directory in your home 
+directory and adds and removes directories from the path to set you up with different versions of ruby.
+
+So&#8212;aspiring to develop with Rails 3 and Ruby 1.9 by default in the future, I set rvm to load Ruby 1.9 by default when 
+I open a shell (by issuing another rvm command):
+
+<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> rvm --default ruby-head
+<span class="go">Close and reopen your shell so as to reload your &#39;default&#39; ruby version, and then check to see that it is indeed the </span>
+<span class="go">1.9 version:</span>
+
+<span class="gp">macbook:~$</span> ruby -v
+<span class="go">ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span>
+<span class="go">Installing Rails 3</span></code></pre></div>
+
+Now we&#8217;ve got Ruby 1.9 installed, so let&#8217;s install Rails. Rails comes as a bunch of gems, so installing it is a matter 
+of updating your rubygem program and then installing those gems.
+
+How does Rvm work with gems? Well, it installs them into ruby-version-specific directories in its hidden .rvm 
+directories. Even rubygems is versioned. Here you can see how when I check the path of the Ruby executables when I have 
+the ruby-head version selected with Rvm, it&#8217;s off in a strange special Rvm controlled place:
+
+<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> which ruby
+<span class="go">/Users/kmtrowbr/.rvm/rubies/ruby-head/bin/ruby</span>
+<span class="gp">macbook:~$</span> which gem
+<span class="go">/Users/kmtrowbr/.rvm/rubies/ruby-head/bin/gem</span>
+<span class="gp">macbook:~$</span> env <span class="p">|</span> grep ruby
+<span class="go">GEM_HOME=/Users/kmtrowbr/.rvm/gems/ruby-head</span>
+<span class="go">MY_RUBY_HOME=/Users/kmtrowbr/.rvm/rubies/ruby-head</span>
+<span class="go">RUBY_VERSION=ruby-head</span></code></pre></div>
+
+So basically this means that once you are using Rvm you&#8217;ll probably want to use it to install Ruby gems as well. In the 
+case of installing Rails, we want to install rails into the RVM environment that goes with rails 1.9. Rvm has 
+[documentation around this](http://rvm.beginrescueend.com/rubies/rubygems/).
+
+The basic principle is to not use sudo to install gems. Since Rvm works by isolating code in your ~/.rvm (user level) 
+directory, it&#8217;s a waste (and will probably screw things up) to use sudo gem install to install the gems in a system 
+level directory.
+
+The second principle is to run rubygems through rvm. Rvm will invoke the version of rubygems that is associated with 
+that version of Ruby, and install the gems in the proper path.
+
+So in the following sequence of commands I update rubygems to the most current version, check to see which version that 
+is, and then install the new rails:
+
+Note how for some reason you have to install a bunch of prerequisite gems before installing the Rails 3 gem. I&#8217;m not 
+sure why this is but these instructions come from DHH so &#8211; there must be a good reason!
+
+<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> rvm ruby-head gem update --system
+<span class="go">Updating RubyGems</span>
+<span class="go">Nothing to update</span>
+
+<span class="gp">macbook:~$</span> rvm ruby-head gem -v
+<span class="go">1.3.7</span>
+
+<span class="gp">macbook:~$</span> rvm ruby-head gem install tzinfo builder memcache-client rack rack-test rack-mount erubis mail text-format thor bundler i18n
+<span class="gp">macbook:~$</span> rvm ruby-head gem install rails --prerelease
+<span class="go">ruby-head: ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span>
+<span class="go">installing rails ...</span>
+<span class="go">rails  installed, output logged to:</span>
+<span class="go">/Users/kmtrowbr/.rvm/log/ruby-head/gem.install.log</span></code></pre></div>
+
+
+## Switching between Rubies
+
+So there you have it folks. If you need to use Ruby 1.8.6 to work on that old Rails 2.3 project, just tell rvm to use 
+that as the version of ruby for that console session:
+
+<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> rvm system
+<span class="gp">macbook:~$</span> ruby -v
+<span class="go">ruby 1.8.7 (2009-06-08 patchlevel 173) [universal-darwin10.0]</span>
+<span class="go">Once you&#39;ve finished, you can switch back to Ruby 1.9:</span>
+
+<span class="gp">macbook:~$</span> rvm default
+<span class="gp">macbook:~$</span> ruby -v
+<span class="go">ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span></code></pre></div>
+
+I know that most Rails developers are going to run into this situation as they straddle Rails 2 and 3 moving forward, 
+and if there is a better way of switching back and forth between Ruby 1.8.6 and 1.9, I have yet to hear of it!
+
+What&#8217;s your take on this?]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Debian 5 'Cap Deprec-rails' Install Error]]></title>
+    <link href="http://www.kevinmtrowbridge.com/2009-05-15-debian-5-cap-deprec-rails-install-error"/>
+    <updated>2009-05-15T00:00:00-07:00</updated>
+    <id>http://www.kevinmtrowbridge.com/debian-5-cap-deprec-rails-install-error</id>
+    <content type="html"><![CDATA[One of my aspirations is to blog a bit more (not everything I do is traveling, and besides, I returned months ago)!  I 
+have a techie side too, so I thought I would blog about some of the more interesting tech topics that I have been 
+working with lately.  (I know how much others' tech blogs have helped me!)
+
+I develop sites using Rails, and use the Deprec gem of Capistrano recipies to greatly speed up the installation / 
+configuration of my machines. Lately I've used Ubuntu 8.04 and Deprec tends to work flawlessly. However with Debian 5 
+Lenny I ran into a hiccup that required me to patch the Swiftiply gem. During cap deprec:rails:install_stack
+Deprec-2.0.9 installs the Swiftiply gem. In Debian it fails with the following trace:
+
+<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="go">~/swiftiply-0.6.1.1$ sudo ruby setup.rb</span>
+<span class="go">Building extension in /home/kmtrowbr/swiftiply-0.6.1.1/ext/fastfilereader with {:mkmf=&gt;true}.</span>
+<span class="go">checking for main() in -lpthread... yes</span>
+<span class="go">checking for sys/epoll.h... yes</span>
+
+<span class="go">....</span>
+
+<span class="go">creating Makefile</span>
+<span class="go">g++ -I. -I. -I/opt/ruby-enterprise-1.8.6-20090113/lib/ruby/1.8/x86_64-linux -I/home/kmtrowbr/swiftiply-0.6.1.1/ext/fastfilereader -DHAVE_SYS_EPOLL_H -DHAVE_OPENSSL_SSL_H -DHAVE_OPENSSL_ERR_H   -DOS_UNIX -DBUILD_FOR_RUBY -DHAVE_EPOLL -DWITH_SSL -fPIC -g -O2   -c mapper.cpp</span>
+<span class="go">mapper.cpp: In constructor &#39;Mapper_t::Mapper_t(const std::string&amp;)&#39;:</span>
+<span class="go">mapper.cpp:53: error: &#39;strerror&#39; was not declared in this scope</span>
+<span class="go">mapper.cpp:57: error: &#39;strerror&#39; was not declared in this scope</span>
+<span class="go">mapper.cpp:62: error: &#39;strerror&#39; was not declared in this scope</span>
+<span class="go">make: *** [mapper.o] Error 1</span></code></pre></div>
+
+A head scratcher. Luckily I found a [blog post referencing it](http://www.iteye.com/topic/360017). (But it&#8217;s in 
+Japanese! - here&#8217;s the [translation](http://translate.google.com/translate?u=http%3A%2F%2Fwww.javaeye.com%2Ftopic%2F360017&sl=zh-CN&tl=en&hl=en&ie=UTF-8)).
+
+Long and short, get the Swiftiply source, and patch the file /ext/fastfilereader/mapper.cpp to add in a few missing 
+header files:
+
+<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="go">~$ wget --quiet http://swiftiply.swiftcore.org/files/swiftiply-0.6.1.1.tgz</span>
+<span class="go">~$ tar xvf swiftiply-0.6.1.1.tgz</span>
+<span class="go">~$ cd swiftiply-0.6.1.1/ext/fastfilereader/</span>
+<span class="go">~/swiftiply-0.6.1.1/ext/fastfilereader$ ls</span>
+<span class="go">Makefile  extconf.rb  mapper.cpp  mapper.h  mkmf.log  rubymain.cpp  rubymain.o</span>
+
+<span class="go">~/swiftiply-0.6.1.1/ext/fastfilereader$ nano mapper.cpp</span></code></pre></div>
+
+If you have the eventmachine gem installed on your machine, you can compare the `mapper.cpp` headers in Swiftiply&#8217;s 
+source to those in Eventmachine&#8217;s produce your own diff:
+
+<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="go">~/swiftiply-0.6.1.1/ext/fastfilereader$ diff mapper.cpp /opt/ruby-enterprise-1.8.6-2</span>
+<span class="go">0090113/lib/ruby/gems/1.8/gems/eventmachine-0.12.6/ext/fastfilereader/mapper.cpp</span></code></pre></div>
+
+Or here is a diff in image format to make it very clear:
+
+![code diff](/assets//mapper_cpp_diff.png &#8220;Diff showing how to patch RubyGem.&#8221;)
+
+Once you&#8217;ve patched that file, install the gem using the setup.rb file in the root of the source:
+
+<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="go">~/swiftiply-0.6.1.1$ sudo ruby setup.rb</span>
+<span class="go">[sudo] password for kmtrowbr:</span>
+<span class="go">Building extension in /home/kmtrowbr/swiftiply-0.6.1.1/ext/fastfilereader with {:mkmf=&gt;true}.</span>
+<span class="go">...</span></code></pre></div>]]></content>
+  </entry>
+  
+</feed>

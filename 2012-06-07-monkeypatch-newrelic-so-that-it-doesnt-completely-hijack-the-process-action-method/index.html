@@ -1,0 +1,337 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Monkeypatch NewRelic So That It Doesn&#8217;t Completely Hijack the &#8216;Process_action&#8217; Method - Kevin Trowbridge</title>
+  <meta name="author" content="Kevin Trowbridge">
+
+  
+  <meta name="description" content="I recently upgraded a site from Rails 2 to Rails 3 and moved it to Heroku. Once the upgrade was complete, I eagerly
+opened up the NewRelic &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://www.kevinmtrowbridge.com/2012-06-07-monkeypatch-newrelic-so-that-it-doesnt-completely-hijack-the-process-action-method">
+  <link href="/favicon.ico" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Kevin Trowbridge" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-7781322-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body    class="collapse-sidebar sidebar-footer" >
+  <header role="banner"><hgroup>
+  <img src="/images/t-for-trowbridge.png" style="float: left;">
+  <h1><a href="/">Kevin Trowbridge</a></h1>
+  
+    <h2>Software Developer. Husband. I ❤ Webpages.</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:www.kevinmtrowbridge.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/about.html">About</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Monkeypatch NewRelic So That It Doesn&#8217;t Completely Hijack the &#8216;Process_action&#8217; Method</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2012-06-07T00:00:00-07:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I recently upgraded a site from Rails 2 to Rails 3 and moved it to Heroku.  Once the upgrade was complete, I eagerly
+opened up the NewRelic performance monitoring tools to see how much speedier the application had become.</p>
+
+<p>To my dismay, the charts were all completely blank.  I carried out the usual debugging steps &hellip; turned up the NewRelic
+agent logging verbosity &hellip; but I couldn&rsquo;t find anything wrong.  Then I discovered that NewRelic has a <em>development mode</em>
+&mdash;which logs requests made locally.  I turned this on and took a look at these charts.  They were also completely
+blank!  So I realized that the problem was not that my application wasn&rsquo;t properly reporting information to the NewRelic
+servers, the problem was that the application wasn&rsquo;t even logging it correctly.</p>
+
+<p><img src="/assets/2012-06-07-monkeypatch-newrelic-so-that-it-doesnt-completely-hijack-the-process-action-method/newrelic_alias_method_chain_process_action.jpg" title="Screenshot showing New Relic tool with totally blank charts." alt="webpage with totally blank charts" /></p>
+
+<p>I opened up RubyMine&rsquo;s trusty &lsquo;External Libraries&rsquo; menu and started placing breakpoints in the <code>newrelic_rpm</code> gem,
+hoping to find the source of the problem.  Hours later I eventually discovered the problem:</p>
+
+<p>NewRelic overrides the <code>ActionController#process_action</code> method to initialize its performance monitoring code.  This
+trick is somewhat well known and other codebases may well fiddle with this method as well. In my case, the (Rails 2 era)
+user session / state (pre-Devise) code uses <code>alias_method_chain</code> on this method, renaming it to
+<code>process_action_with_current_user_assignment</code> and <code>process_action_without_current_user_assignment</code>. Renaming the method
+in this way was blocking NewRelic from working correctly.</p>
+
+<p>Once I knew that this was the problem, I was able to come up with a MonkeyPatch to get NewRelic to allow other pieces
+of code to use <code>alias_method_chain</code> on the <code>process_action</code> method as well.</p>
+
+<p>Place the following code into your <code>/config/initializers</code> directory:</p>
+
+<figure class='code'><figcaption><span>config/initializers/newrelic_monkeypatch.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">module</span> <span class="nn">NewRelic</span>
+</span><span class='line'>  <span class="k">module</span> <span class="nn">Agent</span>
+</span><span class='line'>    <span class="k">module</span> <span class="nn">Instrumentation</span>
+</span><span class='line'>      <span class="k">module</span> <span class="nn">Rails3</span>
+</span><span class='line'>        <span class="k">module</span> <span class="nn">ActionController</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">newrelic_write_attr</span><span class="p">(</span><span class="n">attr_name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="c1"># :nodoc:</span>
+</span><span class='line'>            <span class="n">write_inheritable_attribute</span><span class="p">(</span><span class="n">attr_name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class='line'>          <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">newrelic_read_attr</span><span class="p">(</span><span class="n">attr_name</span><span class="p">)</span> <span class="c1"># :nodoc:</span>
+</span><span class='line'>            <span class="n">read_inheritable_attribute</span><span class="p">(</span><span class="n">attr_name</span><span class="p">)</span>
+</span><span class='line'>          <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="c1"># determine the path that is used in the metric name for</span>
+</span><span class='line'>          <span class="c1"># the called controller action</span>
+</span><span class='line'>          <span class="k">def</span> <span class="nf">newrelic_metric_path</span><span class="p">(</span><span class="n">action_name_override</span> <span class="o">=</span> <span class="kp">nil</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">action_part</span> <span class="o">=</span> <span class="n">action_name_override</span> <span class="o">||</span> <span class="n">action_name</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">action_name_override</span> <span class="o">||</span> <span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="o">.</span><span class="n">action_methods</span><span class="o">.</span><span class="n">include?</span><span class="p">(</span><span class="n">action_part</span><span class="p">)</span>
+</span><span class='line'>              <span class="s2">&quot;</span><span class="si">#{</span><span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="o">.</span><span class="n">controller_path</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="n">action_part</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>            <span class="k">else</span>
+</span><span class='line'>              <span class="s2">&quot;</span><span class="si">#{</span><span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="o">.</span><span class="n">controller_path</span><span class="si">}</span><span class="s2">/(other)&quot;</span>
+</span><span class='line'>            <span class="k">end</span>
+</span><span class='line'>          <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="k">def</span> <span class="nf">process_action_with_newrelic_trace</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+</span><span class='line'>            <span class="c1"># skip instrumentation if we are in an ignored action</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">_is_filtered?</span><span class="p">(</span><span class="s1">&#39;do_not_trace&#39;</span><span class="p">)</span>
+</span><span class='line'>              <span class="no">NewRelic</span><span class="o">::</span><span class="no">Agent</span><span class="o">.</span><span class="n">disable_all_tracing</span> <span class="k">do</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">process_action_without_newrelic_trace</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+</span><span class='line'>              <span class="k">end</span>
+</span><span class='line'>            <span class="k">end</span>
+</span><span class='line'>            <span class="n">perform_action_with_newrelic_trace</span><span class="p">(</span><span class="ss">:category</span> <span class="o">=&gt;</span> <span class="ss">:controller</span><span class="p">,</span> <span class="ss">:name</span> <span class="o">=&gt;</span> <span class="nb">self</span><span class="o">.</span><span class="n">action_name</span><span class="p">,</span> <span class="ss">:path</span> <span class="o">=&gt;</span> <span class="n">newrelic_metric_path</span><span class="p">,</span> <span class="ss">:params</span> <span class="o">=&gt;</span> <span class="n">request</span><span class="o">.</span><span class="n">filtered_parameters</span><span class="p">,</span> <span class="ss">:class_name</span> <span class="o">=&gt;</span> <span class="nb">self</span><span class="o">.</span><span class="n">class</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">do</span>
+</span><span class='line'>              <span class="n">process_action_without_newrelic_trace</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+</span><span class='line'>            <span class="k">end</span>
+</span><span class='line'>          <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">end</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="no">DependencyDetection</span><span class="o">.</span><span class="n">defer</span> <span class="k">do</span>
+</span><span class='line'>  <span class="vi">@name</span> <span class="o">=</span> <span class="ss">:rails3_controller</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">depends_on</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">defined?</span><span class="p">(</span><span class="o">::</span><span class="no">Rails</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="o">::</span><span class="no">Rails</span><span class="o">::</span><span class="no">VERSION</span><span class="o">::</span><span class="no">MAJOR</span><span class="o">.</span><span class="n">to_i</span> <span class="o">==</span> <span class="mi">3</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">depends_on</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">defined?</span><span class="p">(</span><span class="no">ActionController</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">defined?</span><span class="p">(</span><span class="no">ActionController</span><span class="o">::</span><span class="no">Base</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">executes</span> <span class="k">do</span>
+</span><span class='line'>    <span class="no">NewRelic</span><span class="o">::</span><span class="no">Agent</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span> <span class="s1">&#39;Installing Rails 3 Controller instrumentation&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">executes</span> <span class="k">do</span>
+</span><span class='line'>    <span class="k">class</span> <span class="nc">ActionController</span><span class="o">::</span><span class="no">Base</span>
+</span><span class='line'>      <span class="kp">include</span> <span class="no">NewRelic</span><span class="o">::</span><span class="no">Agent</span><span class="o">::</span><span class="no">Instrumentation</span><span class="o">::</span><span class="no">ControllerInstrumentation</span>
+</span><span class='line'>      <span class="kp">include</span> <span class="no">NewRelic</span><span class="o">::</span><span class="no">Agent</span><span class="o">::</span><span class="no">Instrumentation</span><span class="o">::</span><span class="no">Rails3</span><span class="o">::</span><span class="no">ActionController</span>
+</span><span class='line'>      <span class="n">alias_method_chain</span> <span class="ss">:process_action</span><span class="p">,</span> <span class="ss">:newrelic_trace</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Credit to: <a href="https://gist.github.com/959784">https://gist.github.com/959784</a></p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Trowbridge</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2012-06-07T00:00:00-07:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/software/'>software</a>
+  
+</span>
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2012-05-30-heroku-necessities-generate-CSV-files-in-the-background" title="Previous Post: Heroku necessities --- generate CSV files in the background with delayed_job and store them on S3 with Paperclip">&laquo; Heroku necessities &#8212; generate CSV files in the background with delayed_job and store them on S3 with Paperclip</a>
+      
+      
+        <a class="basic-alignment right" href="/2013-04-09-moving-to-san-francisco" title="Next Post: Moving to San Francisco">Moving to San Francisco &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  &copy;2008-2014 by Kevin Trowbridge&mdash;All rights reserved. Thanks for visiting my site.
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a>.</span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'kevinmtrowbridge';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+</body>
+</html>
