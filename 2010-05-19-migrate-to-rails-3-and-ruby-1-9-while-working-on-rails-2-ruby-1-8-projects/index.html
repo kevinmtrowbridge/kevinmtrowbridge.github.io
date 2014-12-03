@@ -1,5 +1,9 @@
 
 <!DOCTYPE html>
+<!--
+  Welcome to my site!  Take a look at my code.
+  Kevin Trowbridge, 2014
+-->
 <!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
 <!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
@@ -79,8 +83,8 @@ drive. And I wanted to &hellip;">
   <div id="main">
     <div id="content">
       <div>
-<article class="hentry" role="article">
-  
+  <article class="hentry" role="article">
+    
   <header>
     
       <h1 class="entry-title">Migrate to Rails 3 and Ruby 1.9, While Still Working on Rails 2, Ruby 1.8 Projects</h1>
@@ -129,21 +133,36 @@ interpreters to sets of gems.</p>
 are documented here in this Ruby language <a href="http://redmine.ruby-lang.org/issues/show/1788">bug report</a>. There, folks
 recommended upgrading to the ruby-head version. So I did that, and it resolved the issues that I had.</p>
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> rvm install ruby-head
-<span class="go">Installing Ruby from source to: /Users/kmtrowbr/.rvm/rubies/ruby-head</span>
-<span class="go">Updating ruby from http://svn.ruby-lang.org/repos/ruby/trunk</span>
-<span class="go">Configuring ruby-head, this may take a while depending on your cpu(s)...</span>
-<span class="go">Compiling ruby-head, this may take a while, depending on your cpu(s)...</span>
-<span class="go">Installing ruby-head</span>
-<span class="go">Installation of ruby-head is complete.</span>
-<span class="go">Updating rubygems for /Users/kmtrowbr/.rvm/gems/ruby-head@global</span>
-<span class="go">Updating rubygems for /Users/kmtrowbr/.rvm/gems/ruby-head</span>
-<span class="go">Installing gems for ruby-head.</span>
-<span class="go">Installing rdoc to /Users/kmtrowbr/.rvm/gems/ruby-head@global</span>
-<span class="go">Installing rdoc to /Users/kmtrowbr/.rvm/gems/ruby-head</span>
-<span class="go">Installing rake to /Users/kmtrowbr/.rvm/gems/ruby-head@global</span>
-<span class="go">Installing rake to /Users/kmtrowbr/.rvm/gems/ruby-head</span>
-<span class="go">Installation of gems for ruby-head is complete.</span></code></pre></div>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>macbook:~$ rvm install ruby-head
+</span><span class='line'>Installing Ruby from source to: /Users/kmtrowbr/.rvm/rubies/ruby-head
+</span><span class='line'>Updating ruby from http://svn.ruby-lang.org/repos/ruby/trunk
+</span><span class='line'>Configuring ruby-head, this may take a while depending on your cpu(s)...
+</span><span class='line'>Compiling ruby-head, this may take a while, depending on your cpu(s)...
+</span><span class='line'>Installing ruby-head
+</span><span class='line'>Installation of ruby-head is complete.
+</span><span class='line'>Updating rubygems for /Users/kmtrowbr/.rvm/gems/ruby-head@global
+</span><span class='line'>Updating rubygems for /Users/kmtrowbr/.rvm/gems/ruby-head
+</span><span class='line'>Installing gems for ruby-head.
+</span><span class='line'>Installing rdoc to /Users/kmtrowbr/.rvm/gems/ruby-head@global
+</span><span class='line'>Installing rdoc to /Users/kmtrowbr/.rvm/gems/ruby-head
+</span><span class='line'>Installing rake to /Users/kmtrowbr/.rvm/gems/ruby-head@global
+</span><span class='line'>Installing rake to /Users/kmtrowbr/.rvm/gems/ruby-head
+</span><span class='line'>Installation of gems for ruby-head is complete.</span></code></pre></td></tr></table></div></figure>
 
 
 <p>Rvm works on a per-user-basis by playing with the shell paths. It places ruby into a hidden .rvm directory in your home
@@ -152,13 +171,19 @@ directory and adds and removes directories from the path to set you up with diff
 <p>So&mdash;aspiring to develop with Rails 3 and Ruby 1.9 by default in the future, I set rvm to load Ruby 1.9 by default when
 I open a shell (by issuing another rvm command):</p>
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> rvm --default ruby-head
-<span class="go">Close and reopen your shell so as to reload your &#39;default&#39; ruby version, and then check to see that it is indeed the </span>
-<span class="go">1.9 version:</span>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>macbook:~$ rvm --default ruby-head</span></code></pre></td></tr></table></div></figure>
 
-<span class="gp">macbook:~$</span> ruby -v
-<span class="go">ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span>
-<span class="go">Installing Rails 3</span></code></pre></div>
+
+<p>Close and reopen your shell so as to reload your &lsquo;default&rsquo; ruby version, and then check to see that it is indeed the
+1.9 version:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>macbook:~$ ruby -v
+</span><span class='line'>ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]
+</span><span class='line'>Installing Rails 3</span></code></pre></td></tr></table></div></figure>
 
 
 <p>Now we&rsquo;ve got Ruby 1.9 installed, so let&rsquo;s install Rails. Rails comes as a bunch of gems, so installing it is a matter
@@ -168,14 +193,22 @@ of updating your rubygem program and then installing those gems.</p>
 directories. Even rubygems is versioned. Here you can see how when I check the path of the Ruby executables when I have
 the ruby-head version selected with Rvm, it&rsquo;s off in a strange special Rvm controlled place:</p>
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> which ruby
-<span class="go">/Users/kmtrowbr/.rvm/rubies/ruby-head/bin/ruby</span>
-<span class="gp">macbook:~$</span> which gem
-<span class="go">/Users/kmtrowbr/.rvm/rubies/ruby-head/bin/gem</span>
-<span class="gp">macbook:~$</span> env <span class="p">|</span> grep ruby
-<span class="go">GEM_HOME=/Users/kmtrowbr/.rvm/gems/ruby-head</span>
-<span class="go">MY_RUBY_HOME=/Users/kmtrowbr/.rvm/rubies/ruby-head</span>
-<span class="go">RUBY_VERSION=ruby-head</span></code></pre></div>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>macbook:~$ which ruby
+</span><span class='line'>/Users/kmtrowbr/.rvm/rubies/ruby-head/bin/ruby
+</span><span class='line'>macbook:~$ which gem
+</span><span class='line'>/Users/kmtrowbr/.rvm/rubies/ruby-head/bin/gem
+</span><span class='line'>macbook:~$ env | grep ruby
+</span><span class='line'>GEM_HOME=/Users/kmtrowbr/.rvm/gems/ruby-head
+</span><span class='line'>MY_RUBY_HOME=/Users/kmtrowbr/.rvm/rubies/ruby-head
+</span><span class='line'>RUBY_VERSION=ruby-head</span></code></pre></td></tr></table></div></figure>
 
 
 <p>So basically this means that once you are using Rvm you&rsquo;ll probably want to use it to install Ruby gems as well. In the
@@ -195,19 +228,32 @@ is, and then install the new rails:</p>
 <p>Note how for some reason you have to install a bunch of prerequisite gems before installing the Rails 3 gem. I&rsquo;m not
 sure why this is but these instructions come from DHH so &ndash; there must be a good reason!</p>
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> rvm ruby-head gem update --system
-<span class="go">Updating RubyGems</span>
-<span class="go">Nothing to update</span>
-
-<span class="gp">macbook:~$</span> rvm ruby-head gem -v
-<span class="go">1.3.7</span>
-
-<span class="gp">macbook:~$</span> rvm ruby-head gem install tzinfo builder memcache-client rack rack-test rack-mount erubis mail text-format thor bundler i18n
-<span class="gp">macbook:~$</span> rvm ruby-head gem install rails --prerelease
-<span class="go">ruby-head: ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span>
-<span class="go">installing rails ...</span>
-<span class="go">rails  installed, output logged to:</span>
-<span class="go">/Users/kmtrowbr/.rvm/log/ruby-head/gem.install.log</span></code></pre></div>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>macbook:~$ rvm ruby-head gem update --system
+</span><span class='line'>Updating RubyGems
+</span><span class='line'>Nothing to update
+</span><span class='line'>
+</span><span class='line'>macbook:~$ rvm ruby-head gem -v
+</span><span class='line'>1.3.7
+</span><span class='line'>
+</span><span class='line'>macbook:~$ rvm ruby-head gem install tzinfo builder memcache-client rack rack-test rack-mount erubis mail text-format thor bundler i18n
+</span><span class='line'>macbook:~$ rvm ruby-head gem install rails --prerelease
+</span><span class='line'>ruby-head: ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]
+</span><span class='line'>installing rails ...
+</span><span class='line'>rails  installed, output logged to:
+</span><span class='line'>/Users/kmtrowbr/.rvm/log/ruby-head/gem.install.log</span></code></pre></td></tr></table></div></figure>
 
 
 <h2>Switching between Rubies</h2>
@@ -215,14 +261,22 @@ sure why this is but these instructions come from DHH so &ndash; there must be a
 <p>So there you have it folks. If you need to use Ruby 1.8.6 to work on that old Rails 2.3 project, just tell rvm to use
 that as the version of ruby for that console session:</p>
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> rvm system
-<span class="gp">macbook:~$</span> ruby -v
-<span class="go">ruby 1.8.7 (2009-06-08 patchlevel 173) [universal-darwin10.0]</span>
-<span class="go">Once you&#39;ve finished, you can switch back to Ruby 1.9:</span>
-
-<span class="gp">macbook:~$</span> rvm default
-<span class="gp">macbook:~$</span> ruby -v
-<span class="go">ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span></code></pre></div>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>macbook:~$ rvm system
+</span><span class='line'>macbook:~$ ruby -v
+</span><span class='line'>ruby 1.8.7 (2009-06-08 patchlevel 173) [universal-darwin10.0]
+</span><span class='line'>Once you've finished, you can switch back to Ruby 1.9:
+</span><span class='line'>
+</span><span class='line'>macbook:~$ rvm default
+</span><span class='line'>macbook:~$ ruby -v
+</span><span class='line'>ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span></code></pre></td></tr></table></div></figure>
 
 
 <p>I know that most Rails developers are going to run into this situation as they straddle Rails 2 and 3 moving forward,
@@ -232,20 +286,20 @@ and if there is a better way of switching back and forth between Ruby 1.8.6 and 
 </div>
 
 
-  <footer>
-    <p class="meta">
-      
+    <footer>
+      <p class="meta">
+        
   
 
 <span class="byline author vcard">Posted by <span class="fn">Kevin Trowbridge</span></span>
 
-      
+        
 
 
 
 
 <time class='entry-date' datetime='2010-05-19T00:00:00-07:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2010</span></span> <span class='time'>12:00 am</span></time>
-      
+        
 
 <span class="categories">
   
@@ -254,29 +308,45 @@ and if there is a better way of switching back and forth between Ruby 1.8.6 and 
 </span>
 
 
-    </p>
-    <p class="meta">
-      
-        <a class="basic-alignment left" href="/2009-07-09-public-transportation-backpacking-trip-point-reyes" title="Previous Post: Public transportation backpacking trip to Point Reyes">&laquo; Public transportation backpacking trip to Point Reyes</a>
-      
-      
-        <a class="basic-alignment right" href="/2010-05-21-integrating-mercurial-with-the-OSX-opendiff-tool" title="Next Post: Integrating Mercurial with the OSX opendiff tool">Integrating Mercurial with the OSX opendiff tool &raquo;</a>
-      
-    </p>
-  </footer>
-</article>
+      </p>
+    </footer>
+  </article>
 
+  
   <section>
-    <h1>Comments</h1>
+    <h3>Related</h3>
+    <ul>
+
+      
+      <li><a href="/2010-05-19-migrate-to-rails-3-and-ruby-1-9-while-working-on-rails-2-ruby-1-8-projects">Migrate to Rails 3 and Ruby 1.9, while still working on Rails 2, Ruby 1.8 projects</a></li>
+      
+      <li><a href="/2009-09-05-an-interview-with-elmer-g-wurst-brutus-michigan-from-1930-on">Brutus, Michigan from 1930 on, an interview with Elmer G. Wurst</a></li>
+      
+      <li><a href="/2012-05-30-heroku-necessities-generate-CSV-files-in-the-background">Heroku necessities &#8212; generate CSV files in the background with delayed_job and store them on S3 with Paperclip</a></li>
+      
+      <li><a href="/2009-07-09-public-transportation-backpacking-trip-2-skyline-to-the-sea">Public transportation backpacking trip 2, Skyline-to-the-sea</a></li>
+      
+      <li><a href="/2006-07-30-night-trains-madrid-and-flying-home">Night Trains, Madrid, and Flying Home</a></li>
+      
+
+    </ul>
+  </section>
+  
+
+  
+  <section>
+    <h3>Comments</h3>
+
     <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
 </div>
   </section>
+  
 
 </div>
 
 <aside class="sidebar">
   
-    
+  
   
 </aside>
 

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Mexico | Kevin Trowbridge]]></title>
   <link href="http://www.kevinmtrowbridge.com/blog/categories/mexico/atom.xml" rel="self"/>
   <link href="http://www.kevinmtrowbridge.com/"/>
-  <updated>2014-12-03T12:49:13-08:00</updated>
+  <updated>2014-12-03T13:41:41-08:00</updated>
   <id>http://www.kevinmtrowbridge.com/</id>
   <author>
     <name><![CDATA[Kevin Trowbridge]]></name>
@@ -31,13 +31,43 @@ time, but distressingly in Monterrey the prices are not much lower than in the U
 
 For example let's consider a typical night out (prices in US dollars, assuming 11.25 pesos / dollar):
 
-|                     | Mexico          | USA            |
-| -------------       |---------------: | --------------:|
-| Movie tickets       | $4              | $6.50          |
-| Gasoline (1 gallon) | $2.26           | $1.80          |
-| Dinner:             | $3.55 (tacos)   | $8 (hamburger) |
-|                     | (2 beers) 4.44  | $6             |
-| **Total**           | **$14.25**      | **$22.30**     |
+<table class='table'>
+  <caption>Cost of a night out in USA vs Mexico (2004)</caption>
+  <thead>
+    <tr>
+    <th></th>
+    <th>Mexico</th>
+    <th>USA</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Movie tickets</td>
+      <td>$4</td>
+      <td>$6.50</td>
+    </tr>
+    <tr>
+      <td>Gasoline (1 gallon)</td>
+      <td>$2.26</td>
+      <td>$1.80</td>
+    </tr>
+    <tr>
+      <td>Dinner:</td>
+      <td>$3.55 (tacos)</td>
+      <td>$8 (hamburger)</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>(2 beers) 4.44</td>
+      <td>$6</td>
+    </tr>
+    <tr>
+      <td><strong>Total</strong></td>
+      <td><strong>$14.25</strong></td>
+      <td><strong>$22.30</strong></td>
+    </tr>
+  </tbody>
+</table>
 
 <sub>
   * Mexican prices from my own experience and [this site](http://www.numbeo.com/cost-of-living/country_result.jsp?country=Mexico). 
@@ -58,9 +88,22 @@ However looking at official figures from the &#8220;CIA World Factbook&#8221; fo
 it looks like my situation is, on the whole, representative of the difference in the cost of life between the US and 
 Mexico.
 
-|                 | Mexico          | USA            |
-| &#8212;&#8212;&#8212;&#8212;-   |&#8212;&#8212;&#8212;&#8212;&#8212;: | &#8212;&#8212;&#8212;&#8212;&#8211;:|
-| GDP per capita  | $9k             | $37k           |
+<table class='table'>
+  <thead>
+    <tr>
+    <th></th>
+    <th>Mexico</th>
+    <th>USA</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>GDP per capita</td>
+      <td>$9k</td>
+      <td>$37k</td>
+    </tr>
+  </tbody>
+</table>
 
 9k / 37k = Mexican GDP is 23% of the American GDP.
 

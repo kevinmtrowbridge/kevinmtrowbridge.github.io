@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Software | Kevin Trowbridge]]></title>
   <link href="http://www.kevinmtrowbridge.com/blog/categories/software/atom.xml" rel="self"/>
   <link href="http://www.kevinmtrowbridge.com/"/>
-  <updated>2014-12-03T12:49:13-08:00</updated>
+  <updated>2014-12-03T13:41:41-08:00</updated>
   <id>http://www.kevinmtrowbridge.com/</id>
   <author>
     <name><![CDATA[Kevin Trowbridge]]></name>
@@ -627,21 +627,37 @@ Note: I initially tried to install Ruby 1.9.2, but I ran into some wicked bugs w
 are documented here in this Ruby language [bug report](http://redmine.ruby-lang.org/issues/show/1788). There, folks 
 recommended upgrading to the ruby-head version. So I did that, and it resolved the issues that I had.
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> rvm install ruby-head
-<span class="go">Installing Ruby from source to: /Users/kmtrowbr/.rvm/rubies/ruby-head</span>
-<span class="go">Updating ruby from http://svn.ruby-lang.org/repos/ruby/trunk</span>
-<span class="go">Configuring ruby-head, this may take a while depending on your cpu(s)...</span>
-<span class="go">Compiling ruby-head, this may take a while, depending on your cpu(s)...</span>
-<span class="go">Installing ruby-head</span>
-<span class="go">Installation of ruby-head is complete.</span>
-<span class="go">Updating rubygems for /Users/kmtrowbr/.rvm/gems/ruby-head@global</span>
-<span class="go">Updating rubygems for /Users/kmtrowbr/.rvm/gems/ruby-head</span>
-<span class="go">Installing gems for ruby-head.</span>
-<span class="go">Installing rdoc to /Users/kmtrowbr/.rvm/gems/ruby-head@global</span>
-<span class="go">Installing rdoc to /Users/kmtrowbr/.rvm/gems/ruby-head</span>
-<span class="go">Installing rake to /Users/kmtrowbr/.rvm/gems/ruby-head@global</span>
-<span class="go">Installing rake to /Users/kmtrowbr/.rvm/gems/ruby-head</span>
-<span class="go">Installation of gems for ruby-head is complete.</span></code></pre></div>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="x">macbook:~$ rvm install ruby-head</span>
+</span><span class='line'><span class="x">Installing Ruby from source to: /Users/kmtrowbr/.rvm/rubies/ruby-head</span>
+</span><span class='line'><span class="x">Updating ruby from http://svn.ruby-lang.org/repos/ruby/trunk</span>
+</span><span class='line'><span class="x">Configuring ruby-head, this may take a while depending on your cpu(s)...</span>
+</span><span class='line'><span class="x">Compiling ruby-head, this may take a while, depending on your cpu(s)...</span>
+</span><span class='line'><span class="x">Installing ruby-head</span>
+</span><span class='line'><span class="x">Installation of ruby-head is complete.</span>
+</span><span class='line'><span class="x">Updating rubygems for /Users/kmtrowbr/.rvm/gems/ruby-head@global</span>
+</span><span class='line'><span class="x">Updating rubygems for /Users/kmtrowbr/.rvm/gems/ruby-head</span>
+</span><span class='line'><span class="x">Installing gems for ruby-head.</span>
+</span><span class='line'><span class="x">Installing rdoc to /Users/kmtrowbr/.rvm/gems/ruby-head@global</span>
+</span><span class='line'><span class="x">Installing rdoc to /Users/kmtrowbr/.rvm/gems/ruby-head</span>
+</span><span class='line'><span class="x">Installing rake to /Users/kmtrowbr/.rvm/gems/ruby-head@global</span>
+</span><span class='line'><span class="x">Installing rake to /Users/kmtrowbr/.rvm/gems/ruby-head</span>
+</span><span class='line'><span class="x">Installation of gems for ruby-head is complete.</span>
+</span></code></pre></td></tr></table></div></figure>
 
 Rvm works on a per-user-basis by playing with the shell paths. It places ruby into a hidden .rvm directory in your home 
 directory and adds and removes directories from the path to set you up with different versions of ruby.
@@ -649,13 +665,20 @@ directory and adds and removes directories from the path to set you up with diff
 So&#8212;aspiring to develop with Rails 3 and Ruby 1.9 by default in the future, I set rvm to load Ruby 1.9 by default when 
 I open a shell (by issuing another rvm command):
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> rvm --default ruby-head
-<span class="go">Close and reopen your shell so as to reload your &#39;default&#39; ruby version, and then check to see that it is indeed the </span>
-<span class="go">1.9 version:</span>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="x">macbook:~$ rvm --default ruby-head</span>
+</span></code></pre></td></tr></table></div></figure>
 
-<span class="gp">macbook:~$</span> ruby -v
-<span class="go">ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span>
-<span class="go">Installing Rails 3</span></code></pre></div>
+Close and reopen your shell so as to reload your &#8216;default&#8217; ruby version, and then check to see that it is indeed the 
+1.9 version:
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="x">macbook:~$ ruby -v</span>
+</span><span class='line'><span class="x">ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span>
+</span><span class='line'><span class="x">Installing Rails 3</span>
+</span></code></pre></td></tr></table></div></figure>
 
 Now we&#8217;ve got Ruby 1.9 installed, so let&#8217;s install Rails. Rails comes as a bunch of gems, so installing it is a matter 
 of updating your rubygem program and then installing those gems.
@@ -664,14 +687,23 @@ How does Rvm work with gems? Well, it installs them into ruby-version-specific d
 directories. Even rubygems is versioned. Here you can see how when I check the path of the Ruby executables when I have 
 the ruby-head version selected with Rvm, it&#8217;s off in a strange special Rvm controlled place:
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> which ruby
-<span class="go">/Users/kmtrowbr/.rvm/rubies/ruby-head/bin/ruby</span>
-<span class="gp">macbook:~$</span> which gem
-<span class="go">/Users/kmtrowbr/.rvm/rubies/ruby-head/bin/gem</span>
-<span class="gp">macbook:~$</span> env <span class="p">|</span> grep ruby
-<span class="go">GEM_HOME=/Users/kmtrowbr/.rvm/gems/ruby-head</span>
-<span class="go">MY_RUBY_HOME=/Users/kmtrowbr/.rvm/rubies/ruby-head</span>
-<span class="go">RUBY_VERSION=ruby-head</span></code></pre></div>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="x">macbook:~$ which ruby</span>
+</span><span class='line'><span class="x">/Users/kmtrowbr/.rvm/rubies/ruby-head/bin/ruby</span>
+</span><span class='line'><span class="x">macbook:~$ which gem</span>
+</span><span class='line'><span class="x">/Users/kmtrowbr/.rvm/rubies/ruby-head/bin/gem</span>
+</span><span class='line'><span class="x">macbook:~$ env | grep ruby</span>
+</span><span class='line'><span class="x">GEM_HOME=/Users/kmtrowbr/.rvm/gems/ruby-head</span>
+</span><span class='line'><span class="x">MY_RUBY_HOME=/Users/kmtrowbr/.rvm/rubies/ruby-head</span>
+</span><span class='line'><span class="x">RUBY_VERSION=ruby-head</span>
+</span></code></pre></td></tr></table></div></figure>
 
 So basically this means that once you are using Rvm you&#8217;ll probably want to use it to install Ruby gems as well. In the 
 case of installing Rails, we want to install rails into the RVM environment that goes with rails 1.9. Rvm has 
@@ -690,19 +722,33 @@ is, and then install the new rails:
 Note how for some reason you have to install a bunch of prerequisite gems before installing the Rails 3 gem. I&#8217;m not 
 sure why this is but these instructions come from DHH so &#8211; there must be a good reason!
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> rvm ruby-head gem update --system
-<span class="go">Updating RubyGems</span>
-<span class="go">Nothing to update</span>
-
-<span class="gp">macbook:~$</span> rvm ruby-head gem -v
-<span class="go">1.3.7</span>
-
-<span class="gp">macbook:~$</span> rvm ruby-head gem install tzinfo builder memcache-client rack rack-test rack-mount erubis mail text-format thor bundler i18n
-<span class="gp">macbook:~$</span> rvm ruby-head gem install rails --prerelease
-<span class="go">ruby-head: ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span>
-<span class="go">installing rails ...</span>
-<span class="go">rails  installed, output logged to:</span>
-<span class="go">/Users/kmtrowbr/.rvm/log/ruby-head/gem.install.log</span></code></pre></div>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="x">macbook:~$ rvm ruby-head gem update --system</span>
+</span><span class='line'><span class="x">Updating RubyGems</span>
+</span><span class='line'><span class="x">Nothing to update</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">macbook:~$ rvm ruby-head gem -v</span>
+</span><span class='line'><span class="x">1.3.7</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">macbook:~$ rvm ruby-head gem install tzinfo builder memcache-client rack rack-test rack-mount erubis mail text-format thor bundler i18n</span>
+</span><span class='line'><span class="x">macbook:~$ rvm ruby-head gem install rails --prerelease</span>
+</span><span class='line'><span class="x">ruby-head: ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span>
+</span><span class='line'><span class="x">installing rails ...</span>
+</span><span class='line'><span class="x">rails  installed, output logged to:</span>
+</span><span class='line'><span class="x">/Users/kmtrowbr/.rvm/log/ruby-head/gem.install.log</span>
+</span></code></pre></td></tr></table></div></figure>
 
 
 ## Switching between Rubies
@@ -710,14 +756,23 @@ sure why this is but these instructions come from DHH so &#8211; there must be a
 So there you have it folks. If you need to use Ruby 1.8.6 to work on that old Rails 2.3 project, just tell rvm to use 
 that as the version of ruby for that console session:
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">macbook:~$</span> rvm system
-<span class="gp">macbook:~$</span> ruby -v
-<span class="go">ruby 1.8.7 (2009-06-08 patchlevel 173) [universal-darwin10.0]</span>
-<span class="go">Once you&#39;ve finished, you can switch back to Ruby 1.9:</span>
-
-<span class="gp">macbook:~$</span> rvm default
-<span class="gp">macbook:~$</span> ruby -v
-<span class="go">ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span></code></pre></div>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="x">macbook:~$ rvm system</span>
+</span><span class='line'><span class="x">macbook:~$ ruby -v</span>
+</span><span class='line'><span class="x">ruby 1.8.7 (2009-06-08 patchlevel 173) [universal-darwin10.0]</span>
+</span><span class='line'><span class="x">Once you&#39;ve finished, you can switch back to Ruby 1.9:</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">macbook:~$ rvm default</span>
+</span><span class='line'><span class="x">macbook:~$ ruby -v</span>
+</span><span class='line'><span class="x">ruby 1.9.3dev (2010-05-18 trunk 27869) [x86_64-darwin10.3.0]</span>
+</span></code></pre></td></tr></table></div></figure>
 
 I know that most Rails developers are going to run into this situation as they straddle Rails 2 and 3 moving forward, 
 and if there is a better way of switching back and forth between Ruby 1.8.6 and 1.9, I have yet to hear of it!
@@ -739,20 +794,35 @@ configuration of my machines. Lately I've used Ubuntu 8.04 and Deprec tends to w
 Lenny I ran into a hiccup that required me to patch the Swiftiply gem. During cap deprec:rails:install_stack
 Deprec-2.0.9 installs the Swiftiply gem. In Debian it fails with the following trace:
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="go">~/swiftiply-0.6.1.1$ sudo ruby setup.rb</span>
-<span class="go">Building extension in /home/kmtrowbr/swiftiply-0.6.1.1/ext/fastfilereader with {:mkmf=&gt;true}.</span>
-<span class="go">checking for main() in -lpthread... yes</span>
-<span class="go">checking for sys/epoll.h... yes</span>
-
-<span class="go">....</span>
-
-<span class="go">creating Makefile</span>
-<span class="go">g++ -I. -I. -I/opt/ruby-enterprise-1.8.6-20090113/lib/ruby/1.8/x86_64-linux -I/home/kmtrowbr/swiftiply-0.6.1.1/ext/fastfilereader -DHAVE_SYS_EPOLL_H -DHAVE_OPENSSL_SSL_H -DHAVE_OPENSSL_ERR_H   -DOS_UNIX -DBUILD_FOR_RUBY -DHAVE_EPOLL -DWITH_SSL -fPIC -g -O2   -c mapper.cpp</span>
-<span class="go">mapper.cpp: In constructor &#39;Mapper_t::Mapper_t(const std::string&amp;)&#39;:</span>
-<span class="go">mapper.cpp:53: error: &#39;strerror&#39; was not declared in this scope</span>
-<span class="go">mapper.cpp:57: error: &#39;strerror&#39; was not declared in this scope</span>
-<span class="go">mapper.cpp:62: error: &#39;strerror&#39; was not declared in this scope</span>
-<span class="go">make: *** [mapper.o] Error 1</span></code></pre></div>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="x">~/swiftiply-0.6.1.1$ sudo ruby setup.rb</span>
+</span><span class='line'><span class="x">Building extension in /home/kmtrowbr/swiftiply-0.6.1.1/ext/fastfilereader with {:mkmf=&gt;true}.</span>
+</span><span class='line'><span class="x">checking for main() in -lpthread... yes</span>
+</span><span class='line'><span class="x">checking for sys/epoll.h... yes</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">....</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">creating Makefile</span>
+</span><span class='line'><span class="x">g++ -I. -I. -I/opt/ruby-enterprise-1.8.6-20090113/lib/ruby/1.8/x86_64-linux -I/home/kmtrowbr/swiftiply-0.6.1.1/ext/fastfilereader -DHAVE_SYS_EPOLL_H -DHAVE_OPENSSL_SSL_H -DHAVE_OPENSSL_ERR_H   -DOS_UNIX -DBUILD_FOR_RUBY -DHAVE_EPOLL -DWITH_SSL -fPIC -g -O2   -c mapper.cpp</span>
+</span><span class='line'><span class="x">mapper.cpp: In constructor &#39;Mapper_t::Mapper_t(const std::string&amp;)&#39;:</span>
+</span><span class='line'><span class="x">mapper.cpp:53: error: &#39;strerror&#39; was not declared in this scope</span>
+</span><span class='line'><span class="x">mapper.cpp:57: error: &#39;strerror&#39; was not declared in this scope</span>
+</span><span class='line'><span class="x">mapper.cpp:62: error: &#39;strerror&#39; was not declared in this scope</span>
+</span><span class='line'><span class="x">make: *** [mapper.o] Error 1</span>
+</span></code></pre></td></tr></table></div></figure>
 
 A head scratcher. Luckily I found a [blog post referencing it](http://www.iteye.com/topic/360017). (But it&#8217;s in 
 Japanese! - here&#8217;s the [translation](http://translate.google.com/translate?u=http%3A%2F%2Fwww.javaeye.com%2Ftopic%2F360017&sl=zh-CN&tl=en&hl=en&ie=UTF-8)).
@@ -760,19 +830,30 @@ Japanese! - here&#8217;s the [translation](http://translate.google.com/translate
 Long and short, get the Swiftiply source, and patch the file /ext/fastfilereader/mapper.cpp to add in a few missing 
 header files:
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="go">~$ wget --quiet http://swiftiply.swiftcore.org/files/swiftiply-0.6.1.1.tgz</span>
-<span class="go">~$ tar xvf swiftiply-0.6.1.1.tgz</span>
-<span class="go">~$ cd swiftiply-0.6.1.1/ext/fastfilereader/</span>
-<span class="go">~/swiftiply-0.6.1.1/ext/fastfilereader$ ls</span>
-<span class="go">Makefile  extconf.rb  mapper.cpp  mapper.h  mkmf.log  rubymain.cpp  rubymain.o</span>
-
-<span class="go">~/swiftiply-0.6.1.1/ext/fastfilereader$ nano mapper.cpp</span></code></pre></div>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="x">~$ wget --quiet http://swiftiply.swiftcore.org/files/swiftiply-0.6.1.1.tgz</span>
+</span><span class='line'><span class="x">~$ tar xvf swiftiply-0.6.1.1.tgz</span>
+</span><span class='line'><span class="x">~$ cd swiftiply-0.6.1.1/ext/fastfilereader/</span>
+</span><span class='line'><span class="x">~/swiftiply-0.6.1.1/ext/fastfilereader$ ls</span>
+</span><span class='line'><span class="x">Makefile  extconf.rb  mapper.cpp  mapper.h  mkmf.log  rubymain.cpp  rubymain.o</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">~/swiftiply-0.6.1.1/ext/fastfilereader$ nano mapper.cpp</span>
+</span></code></pre></td></tr></table></div></figure>
 
 If you have the eventmachine gem installed on your machine, you can compare the `mapper.cpp` headers in Swiftiply&#8217;s 
 source to those in Eventmachine&#8217;s produce your own diff:
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="go">~/swiftiply-0.6.1.1/ext/fastfilereader$ diff mapper.cpp /opt/ruby-enterprise-1.8.6-2</span>
-<span class="go">0090113/lib/ruby/gems/1.8/gems/eventmachine-0.12.6/ext/fastfilereader/mapper.cpp</span></code></pre></div>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="x">~/swiftiply-0.6.1.1/ext/fastfilereader$ diff mapper.cpp /opt/ruby-enterprise-1.8.6-2</span>
+</span><span class='line'><span class="x">0090113/lib/ruby/gems/1.8/gems/eventmachine-0.12.6/ext/fastfilereader/mapper.cpp</span>
+</span></code></pre></td></tr></table></div></figure>
 
 Or here is a diff in image format to make it very clear:
 
@@ -780,10 +861,15 @@ Or here is a diff in image format to make it very clear:
 
 Once you&#8217;ve patched that file, install the gem using the setup.rb file in the root of the source:
 
-<div class="highlight"><pre><code class="language-console" data-lang="console"><span class="go">~/swiftiply-0.6.1.1$ sudo ruby setup.rb</span>
-<span class="go">[sudo] password for kmtrowbr:</span>
-<span class="go">Building extension in /home/kmtrowbr/swiftiply-0.6.1.1/ext/fastfilereader with {:mkmf=&gt;true}.</span>
-<span class="go">...</span></code></pre></div>]]></content>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="x">~/swiftiply-0.6.1.1$ sudo ruby setup.rb</span>
+</span><span class='line'><span class="x">[sudo] password for kmtrowbr:</span>
+</span><span class='line'><span class="x">Building extension in /home/kmtrowbr/swiftiply-0.6.1.1/ext/fastfilereader with {:mkmf=&gt;true}.</span>
+</span><span class='line'><span class="x">...</span>
+</span></code></pre></td></tr></table></div></figure>]]></content>
   </entry>
   
 </feed>
