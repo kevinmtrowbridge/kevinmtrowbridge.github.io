@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Software | Kevin Trowbridge]]></title>
-  <link href="http://www.kevinmtrowbridge.com/blog/categories/software/atom.xml" rel="self"/>
-  <link href="http://www.kevinmtrowbridge.com/"/>
-  <updated>2014-12-02T18:10:34-08:00</updated>
-  <id>http://www.kevinmtrowbridge.com/</id>
+  <link href="http://kevinmtrowbridge.github.io/blog/categories/software/atom.xml" rel="self"/>
+  <link href="http://kevinmtrowbridge.github.io/"/>
+  <updated>2014-12-02T18:51:12-08:00</updated>
+  <id>http://kevinmtrowbridge.github.io/</id>
   <author>
     <name><![CDATA[Kevin Trowbridge]]></name>
     <email><![CDATA[kevinmtrowbridge@gmail.com]]></email>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Monkeypatch NewRelic So That It Doesn't Completely Hijack the 'Process_action' Method]]></title>
-    <link href="http://www.kevinmtrowbridge.com/2012-06-07-monkeypatch-newrelic-so-that-it-doesnt-completely-hijack-the-process-action-method"/>
+    <link href="http://kevinmtrowbridge.github.io/2012-06-07-monkeypatch-newrelic-so-that-it-doesnt-completely-hijack-the-process-action-method"/>
     <updated>2012-06-07T00:00:00-07:00</updated>
-    <id>http://www.kevinmtrowbridge.com/monkeypatch-newrelic-so-that-it-doesnt-completely-hijack-the-process-action-method</id>
+    <id>http://kevinmtrowbridge.github.io/monkeypatch-newrelic-so-that-it-doesnt-completely-hijack-the-process-action-method</id>
     <content type="html"><![CDATA[I recently upgraded a site from Rails 2 to Rails 3 and moved it to Heroku.  Once the upgrade was complete, I eagerly 
 opened up the NewRelic performance monitoring tools to see how much speedier the application had become.
 
@@ -182,9 +182,9 @@ Credit to: https://gist.github.com/959784]]></content>
   
   <entry>
     <title type="html"><![CDATA[Heroku Necessities --- Generate CSV Files in the Background With Delayed_job and Store Them on S3 With Paperclip]]></title>
-    <link href="http://www.kevinmtrowbridge.com/2012-05-30-heroku-necessities-generate-CSV-files-in-the-background"/>
+    <link href="http://kevinmtrowbridge.github.io/2012-05-30-heroku-necessities-generate-CSV-files-in-the-background"/>
     <updated>2012-05-30T00:00:00-07:00</updated>
-    <id>http://www.kevinmtrowbridge.com/heroku-necessities-generate-CSV-files-in-the-background-with-delayed-job-and-store-them-on-S3-with-paperclip</id>
+    <id>http://kevinmtrowbridge.github.io/heroku-necessities-generate-CSV-files-in-the-background-with-delayed-job-and-store-them-on-S3-with-paperclip</id>
     <content type="html"><![CDATA[I'm trying to get back into technical blogging as I encounter interesting situations on a daily basis ... and I get so 
 much information from others doing the same thing.
 
@@ -559,9 +559,9 @@ pattern and a variant of this could be used in other situations as well. Enjoy a
   
   <entry>
     <title type="html"><![CDATA[Integrating Mercurial With the OSX Opendiff Tool]]></title>
-    <link href="http://www.kevinmtrowbridge.com/2010-05-21-integrating-mercurial-with-the-OSX-opendiff-tool"/>
+    <link href="http://kevinmtrowbridge.github.io/2010-05-21-integrating-mercurial-with-the-OSX-opendiff-tool"/>
     <updated>2010-05-21T00:00:00-07:00</updated>
-    <id>http://www.kevinmtrowbridge.com/integrating-mercurial-with-the-OSX-opendiff-tool</id>
+    <id>http://kevinmtrowbridge.github.io/integrating-mercurial-with-the-OSX-opendiff-tool</id>
     <content type="html"><![CDATA[The command line diff tool produces textual diffs.  These are not useful for visualizing complicated changes. 
 However, the Apple Developer Toolset includes a pretty good graphical diff tool called FileMerge. You can pop open 
 FileMerge from the command line with the command `opendiff`.
@@ -596,9 +596,9 @@ And see the results in opendiff:
   
   <entry>
     <title type="html"><![CDATA[Migrate to Rails 3 and Ruby 1.9, While Still Working on Rails 2, Ruby 1.8 Projects]]></title>
-    <link href="http://www.kevinmtrowbridge.com/2010-05-19-migrate-to-rails-3-and-ruby-1-9-while-working-on-rails-2-ruby-1-8-projects"/>
+    <link href="http://kevinmtrowbridge.github.io/2010-05-19-migrate-to-rails-3-and-ruby-1-9-while-working-on-rails-2-ruby-1-8-projects"/>
     <updated>2010-05-19T00:00:00-07:00</updated>
-    <id>http://www.kevinmtrowbridge.com/migrate-to-rails-3-and-ruby-1-9-while-working-on-rails-2-ruby-1-8-projects</id>
+    <id>http://kevinmtrowbridge.github.io/migrate-to-rails-3-and-ruby-1-9-while-working-on-rails-2-ruby-1-8-projects</id>
     <content type="html"><![CDATA[I've been hearing about Rails 3 for quite a while now. I thought it was about time to install it and take it for a 
 drive. And I wanted to upgrade to Ruby 1.9 too, while I was at it.
 
@@ -727,9 +727,9 @@ What&#8217;s your take on this?]]></content>
   
   <entry>
     <title type="html"><![CDATA[Debian 5 'Cap Deprec-rails' Install Error]]></title>
-    <link href="http://www.kevinmtrowbridge.com/2009-05-15-debian-5-cap-deprec-rails-install-error"/>
+    <link href="http://kevinmtrowbridge.github.io/2009-05-15-debian-5-cap-deprec-rails-install-error"/>
     <updated>2009-05-15T00:00:00-07:00</updated>
-    <id>http://www.kevinmtrowbridge.com/debian-5-cap-deprec-rails-install-error</id>
+    <id>http://kevinmtrowbridge.github.io/debian-5-cap-deprec-rails-install-error</id>
     <content type="html"><![CDATA[One of my aspirations is to blog a bit more (not everything I do is traveling, and besides, I returned months ago)!  I 
 have a techie side too, so I thought I would blog about some of the more interesting tech topics that I have been 
 working with lately.  (I know how much others' tech blogs have helped me!)
