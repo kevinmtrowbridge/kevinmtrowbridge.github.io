@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Autobiographical | Kevin Trowbridge]]></title>
-  <link href="http://kevinmtrowbridge.github.io/blog/categories/autobiographical/atom.xml" rel="self"/>
-  <link href="http://kevinmtrowbridge.github.io/"/>
-  <updated>2014-12-02T18:51:12-08:00</updated>
-  <id>http://kevinmtrowbridge.github.io/</id>
+  <link href="http://www.kevinmtrowbridge.com/blog/categories/autobiographical/atom.xml" rel="self"/>
+  <link href="http://www.kevinmtrowbridge.com/"/>
+  <updated>2014-12-03T12:12:42-08:00</updated>
+  <id>http://www.kevinmtrowbridge.com/</id>
   <author>
     <name><![CDATA[Kevin Trowbridge]]></name>
     <email><![CDATA[kevinmtrowbridge@gmail.com]]></email>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[The Breakers Blues Band]]></title>
-    <link href="http://kevinmtrowbridge.github.io/2013-06-20-the-breakers-blues-band"/>
+    <link href="http://www.kevinmtrowbridge.com/2013-06-20-the-breakers-blues-band"/>
     <updated>2013-06-20T00:00:00-07:00</updated>
-    <id>http://kevinmtrowbridge.github.io/the-breakers-blues-band</id>
+    <id>http://www.kevinmtrowbridge.com/the-breakers-blues-band</id>
     <content type="html"><![CDATA[## “Play that thing!”
 
 My stage presence was lacking.  I wasn't confident, and it showed.  I hunched over the guitar and stared at my hands.
@@ -128,9 +128,9 @@ Mandy Edwards.&#8221;)]]></content>
   
   <entry>
     <title type="html"><![CDATA[Moving to San Francisco]]></title>
-    <link href="http://kevinmtrowbridge.github.io/2013-04-09-moving-to-san-francisco"/>
+    <link href="http://www.kevinmtrowbridge.com/2013-04-09-moving-to-san-francisco"/>
     <updated>2013-04-09T00:00:00-07:00</updated>
-    <id>http://kevinmtrowbridge.github.io/moving-to-san-francisco</id>
+    <id>http://www.kevinmtrowbridge.com/moving-to-san-francisco</id>
     <content type="html"><![CDATA[In all honesty, the time I spent in Mountain View was one of the most lonely and empty of my life. That sounds pretty 
 dire, I wasn't depressed or sad, but the time was -- basically empty. When I thought about it later, I couldn't remember 
 much happening.
